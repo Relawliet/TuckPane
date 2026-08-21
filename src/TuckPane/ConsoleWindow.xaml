@@ -103,8 +103,7 @@
             <Grid
                 x:Name="TitleBarDragRegion"
                 Padding="18,0"
-                Background="Transparent"
-                PointerPressed="TitleBarDragRegion_PointerPressed">
+                Background="Transparent">
                 <StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="10">
                     <Image Width="22" Height="22" Source="ms-appx:///Assets/TuckPane.png" />
                     <TextBlock x:Name="ConsoleTitleText" FontSize="13" FontWeight="SemiBold" Tag="loc:AppTitle" Text="TuckPane" />

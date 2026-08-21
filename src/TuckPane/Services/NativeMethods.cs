@@ -48,8 +48,6 @@ internal static class NativeMethods
     internal const int WM_MBUTTONUP = 0x0208;
     internal const uint WM_MOUSEACTIVATE = 0x0021;
     internal const uint WM_NCHITTEST = 0x0084;
-    internal const uint WM_NCLBUTTONDOWN = 0x00A1;
-    internal const int HTCAPTION = 2;
     internal const int HTCLIENT = 1;
     internal const int WM_KEYDOWN = 0x0100;
     internal const int WM_SYSKEYDOWN = 0x0104;
@@ -401,9 +399,6 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool ReleaseCapture();
-
-    [DllImport("user32.dll", EntryPoint = "SendMessageW")]
-    internal static extern IntPtr SendMessage(IntPtr hWnd, uint message, UIntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

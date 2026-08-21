@@ -4,7 +4,6 @@ using TuckPane.Controls;
 using TuckPane.Models;
 using TuckPane.Services;
 using Microsoft.UI;
-using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -47,6 +46,8 @@ public sealed partial class ConsoleWindow : Window
     {
         _host = host;
         InitializeComponent();
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(TitleBarDragRegion);
         RemoveTextBoxUnderline(AddNameBox, ManageNameBox, ManagePathBox);
         _componentReady = true;
         _defaultAddName = AppStrings.DefaultOrganizerName;
@@ -174,15 +175,6 @@ public sealed partial class ConsoleWindow : Window
     {
         FlushPendingManageChanges();
         _appWindow?.Hide();
-    }
-
-    private void TitleBarDragRegion_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        PointerPoint point = e.GetCurrentPoint(TitleBarDragRegion);
-        if (!point.Properties.IsLeftButtonPressed) return;
-        _ = NativeMethods.ReleaseCapture();
-        _ = NativeMethods.SendMessage(Hwnd, NativeMethods.WM_NCLBUTTONDOWN, new UIntPtr(NativeMethods.HTCAPTION), IntPtr.Zero);
-        e.Handled = true;
     }
 
     private void ConsoleMinimizeButton_Click(object sender, RoutedEventArgs e)
