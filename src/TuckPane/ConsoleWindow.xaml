@@ -1,0 +1,300 @@
+<Window
+    x:Class="TuckPane.ConsoleWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:TuckPane.Controls">
+    <Grid x:Name="ConsoleRoot" Background="#01FFFFFF">
+        <Grid.Resources>
+            <SolidColorBrush x:Key="ConsolePaneSurfaceBrush" Color="#18FFFFFF" />
+            <SolidColorBrush x:Key="ConsolePageSurfaceBrush" Color="#0AFFFFFF" />
+            <SolidColorBrush x:Key="ConsoleCardSurfaceBrush" Color="#34FFFFFF" />
+            <SolidColorBrush x:Key="ConsoleTitleBarSurfaceBrush" Color="#12FFFFFF" />
+            <SolidColorBrush x:Key="ConsoleManageRowSurfaceBrush" Color="#34FFFFFF" />
+            <SolidColorBrush x:Key="ConsoleManageRowBorderBrush" Color="Transparent" />
+            <SolidColorBrush x:Key="ConsoleListItemSurfaceBrush" Color="Transparent" />
+            <SolidColorBrush x:Key="ConsoleListItemSelectedSurfaceBrush" Color="#34FFFFFF" />
+            <SolidColorBrush x:Key="ConsolePrimaryTextBrush" Color="#FF1F1F1F" />
+            <SolidColorBrush x:Key="ConsoleSecondaryTextBrush" Color="#FF656060" />
+            <SolidColorBrush x:Key="ConsoleInputSurfaceBrush" Color="#34FFFFFF" />
+            <SolidColorBrush x:Key="ConsoleSelectionAccentBrush" Color="#FF2DDDE8" />
+            <SolidColorBrush x:Key="ConsoleSliderActiveBrush" Color="#FF888B8E" />
+            <SolidColorBrush x:Key="ConsoleSliderInactiveBrush" Color="#FFC1C4C6" />
+            <SolidColorBrush x:Key="ConsoleSliderThumbBorderBrush" Color="#FFB8B7B3" />
+            <SolidColorBrush x:Key="ConsoleSliderFocusPrimaryBrush" Color="#FF615F5B" />
+            <SolidColorBrush x:Key="ConsoleSliderFocusSecondaryBrush" Color="#FFFAF9F6" />
+            <SolidColorBrush x:Key="SliderThumbBackground" Color="#FFFAF9F6" />
+            <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="#FFFAF9F6" />
+            <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="#FFFAF9F6" />
+            <SolidColorBrush x:Key="SliderThumbBackgroundDisabled" Color="#73FAF9F6" />
+            <SolidColorBrush x:Key="SliderThumbBorderBrush" Color="#FFB8B7B3" />
+            <SolidColorBrush x:Key="SliderTrackFill" Color="#FFC1C4C6" />
+            <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="#FFC1C4C6" />
+            <SolidColorBrush x:Key="SliderTrackFillPressed" Color="#FFC1C4C6" />
+            <SolidColorBrush x:Key="SliderTrackFillDisabled" Color="#73C1C4C6" />
+            <SolidColorBrush x:Key="SliderTrackValueFill" Color="#FF888B8E" />
+            <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="#FF888B8E" />
+            <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="#FF888B8E" />
+            <SolidColorBrush x:Key="SliderTrackValueFillDisabled" Color="#73888B8E" />
+            <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#18FFFFFF" />
+            <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="NavigationViewContentGridBorderBrush" Color="Transparent" />
+            <Style x:Key="Row" TargetType="Border">
+                <Setter Property="MinHeight" Value="46" />
+                <Setter Property="Padding" Value="12,5" />
+                <Setter Property="Margin" Value="0,0,0,6" />
+                <Setter Property="Background" Value="{StaticResource ConsoleCardSurfaceBrush}" />
+                <Setter Property="CornerRadius" Value="10" />
+            </Style>
+            <Style x:Key="Pct" TargetType="controls:ConsoleSlider">
+                <Setter Property="StepFrequency" Value="0.01" />
+                <Setter Property="SmallChange" Value="0.01" />
+                <Setter Property="Foreground" Value="{StaticResource ConsoleSliderActiveBrush}" />
+            </Style>
+            <Style x:Key="FlatTextBoxStyle" TargetType="TextBox">
+                <Setter Property="Background" Value="{StaticResource ConsoleInputSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="CornerRadius" Value="8" />
+            </Style>
+            <Style TargetType="Button">
+                <Setter Property="CornerRadius" Value="8" />
+            </Style>
+            <Style x:Key="NeutralActionButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="{StaticResource ConsoleCardSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource ConsoleManageRowBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="Foreground" Value="{StaticResource ConsolePrimaryTextBrush}" />
+            </Style>
+            <Style TargetType="ComboBox">
+                <Setter Property="Background" Value="{StaticResource ConsoleInputSurfaceBrush}" />
+                <Setter Property="CornerRadius" Value="8" />
+            </Style>
+            <Style TargetType="ComboBoxItem">
+                <Setter Property="CornerRadius" Value="6" />
+            </Style>
+            <Style TargetType="controls:ConsoleSlider">
+                <Setter Property="Background" Value="{StaticResource ConsoleSliderInactiveBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource ConsoleSliderActiveBrush}" />
+                <Setter Property="FocusVisualPrimaryBrush" Value="{StaticResource ConsoleSliderFocusPrimaryBrush}" />
+                <Setter Property="FocusVisualSecondaryBrush" Value="{StaticResource ConsoleSliderFocusSecondaryBrush}" />
+            </Style>
+            <CornerRadius x:Key="ControlCornerRadius">8</CornerRadius>
+            <CornerRadius x:Key="OverlayCornerRadius">10</CornerRadius>
+            <Style x:Key="ManageRow" TargetType="Border" BasedOn="{StaticResource Row}">
+                <Setter Property="Background" Value="{StaticResource ConsoleManageRowSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource ConsoleManageRowBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+            </Style>
+        </Grid.Resources>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid
+            Background="{StaticResource ConsoleTitleBarSurfaceBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="46" />
+                <ColumnDefinition Width="46" />
+            </Grid.ColumnDefinitions>
+            <Grid
+                x:Name="TitleBarDragRegion"
+                Padding="18,0"
+                Background="Transparent"
+                PointerPressed="TitleBarDragRegion_PointerPressed">
+                <StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="10">
+                    <Image Width="22" Height="22" Source="ms-appx:///Assets/TuckPane.png" />
+                    <TextBlock x:Name="ConsoleTitleText" FontSize="13" FontWeight="SemiBold" Tag="loc:AppTitle" Text="TuckPane" />
+                </StackPanel>
+            </Grid>
+            <Button
+                x:Name="ConsoleMinimizeButton"
+                Grid.Column="1"
+                Width="46"
+                Height="48"
+                Padding="0"
+                Background="Transparent"
+                BorderThickness="0"
+                Click="ConsoleMinimizeButton_Click"
+                CornerRadius="0"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center">
+                <FontIcon FontSize="10" Glyph="&#xE921;" />
+            </Button>
+            <Button
+                x:Name="ConsoleCloseButton"
+                Grid.Column="2"
+                Width="46"
+                Height="48"
+                Padding="0"
+                Background="Transparent"
+                BorderThickness="0"
+                Click="ConsoleCloseButton_Click"
+                CornerRadius="0"
+                HorizontalContentAlignment="Center"
+                PointerEntered="ConsoleCloseButton_PointerEntered"
+                PointerExited="ConsoleCloseButton_PointerExited"
+                VerticalContentAlignment="Center">
+                <FontIcon FontSize="12" Glyph="&#xE8BB;" />
+            </Button>
+        </Grid>
+
+        <NavigationView
+            x:Name="RootNavigation"
+            Grid.Row="1"
+            AlwaysShowHeader="False"
+            Background="Transparent"
+            IsBackButtonVisible="Collapsed"
+            IsPaneOpen="True"
+            IsPaneToggleButtonVisible="False"
+            IsSettingsVisible="False"
+            OpenPaneLength="148"
+            PaneDisplayMode="Left"
+            SelectionChanged="RootNavigation_SelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem x:Name="GeneralNavItem" Height="44" Content="通用" Tag="general">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE713;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem x:Name="ThemeNavItem" Height="44" Content="主题" Tag="theme">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE790;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem x:Name="AddNavItem" Height="44" Content="添加" Tag="add">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE710;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem x:Name="ManageNavItem" Height="44" Content="管理" Tag="manage">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE713;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <Grid Padding="18,6,18,18" Background="{StaticResource ConsolePageSurfaceBrush}">
+                <InfoBar x:Name="ConsoleInfoBar" Canvas.ZIndex="5" VerticalAlignment="Top" IsClosable="True" IsOpen="False" />
+
+                <ScrollViewer
+                    x:Name="GeneralPage"
+                    Margin="0,22,0,0"
+                    Background="Transparent"
+                    VerticalScrollBarVisibility="Hidden"
+                    Visibility="Collapsed">
+                    <StackPanel Width="420" HorizontalAlignment="Left" Spacing="16">
+                        <TextBlock FontSize="28" FontWeight="SemiBold" Tag="loc:GeneralTitle" Text="通用" />
+                        <Border Style="{StaticResource Row}">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock FontSize="15" Tag="loc:StartupTitle" Text="开机时启动 TuckPane" />
+                                    <TextBlock Foreground="{StaticResource ConsoleSecondaryTextBrush}" FontSize="12" Tag="loc:StartupDescription" Text="静默恢复收纳窗，不显示总控台。" />
+                                </StackPanel>
+                                <ToggleSwitch x:Name="StartupToggle" Grid.Column="1" VerticalAlignment="Center" Toggled="StartupToggle_Toggled" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource Row}">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock FontSize="15" Tag="loc:LanguageLabel" Text="语言" />
+                                    <TextBlock Foreground="{StaticResource ConsoleSecondaryTextBrush}" FontSize="12" Tag="loc:LanguageDescription" Text="切换后立即应用，无需重启。" />
+                                </StackPanel>
+                                <ComboBox x:Name="LanguageCombo" Grid.Column="1" Width="150" Height="34" SelectionChanged="LanguageCombo_SelectionChanged">
+                                    <ComboBoxItem Tag="loc:LanguageChinese" Content="简体中文" />
+                                    <ComboBoxItem Tag="loc:LanguageEnglish" Content="English" />
+                                    <ComboBoxItem Tag="loc:LanguageJapanese" Content="日本語" />
+                                </ComboBox>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <ScrollViewer
+                    x:Name="ThemePage"
+                    Margin="0,22,0,0"
+                    Background="Transparent"
+                    VerticalScrollBarVisibility="Hidden"
+                    Visibility="Collapsed">
+                    <StackPanel MaxWidth="720" HorizontalAlignment="Left" Spacing="16">
+                        <TextBlock FontSize="28" FontWeight="SemiBold" Tag="loc:ThemeTitle" Text="主题" />
+                        <Grid Width="300" HorizontalAlignment="Left" ColumnSpacing="14" RowSpacing="14">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                            <ToggleButton x:Name="LightThemeCard" HorizontalAlignment="Stretch" Background="{StaticResource ConsoleCardSurfaceBrush}" Click="LightThemeCard_Click" HorizontalContentAlignment="Stretch">
+                                <StackPanel HorizontalAlignment="Stretch" Spacing="10"><Grid Height="126" HorizontalAlignment="Stretch"><Grid.Background><LinearGradientBrush><GradientStop Color="#FF72A8D8" /><GradientStop Offset="1" Color="#FFD7B6A8" /></LinearGradientBrush></Grid.Background><Border Margin="18" Background="#64FFFFFF" CornerRadius="18" /></Grid><TextBlock Foreground="{StaticResource ConsolePrimaryTextBrush}" FontSize="16" FontWeight="SemiBold" Tag="loc:ThemeLightAcrylic" Text="浅色毛玻璃" /></StackPanel>
+                            </ToggleButton>
+                            <ToggleButton x:Name="GrayThemeCard" Grid.Column="1" HorizontalAlignment="Stretch" Background="{StaticResource ConsoleCardSurfaceBrush}" Click="GrayThemeCard_Click" HorizontalContentAlignment="Stretch">
+                                <StackPanel HorizontalAlignment="Stretch" Spacing="10"><Grid Height="126" HorizontalAlignment="Stretch"><Grid.Background><LinearGradientBrush><GradientStop Color="#FF202124" /><GradientStop Offset="1" Color="#FF6B6060" /></LinearGradientBrush></Grid.Background><Border Margin="18" Background="#70202124" CornerRadius="18" /></Grid><TextBlock Foreground="{StaticResource ConsolePrimaryTextBrush}" FontSize="16" FontWeight="SemiBold" Tag="loc:ThemeDarkAcrylic" Text="深色毛玻璃" /></StackPanel>
+                            </ToggleButton>
+                            <ToggleButton x:Name="SolidLightThemeCard" Grid.Row="1" HorizontalAlignment="Stretch" Background="{StaticResource ConsoleCardSurfaceBrush}" Click="SolidLightThemeCard_Click" HorizontalContentAlignment="Stretch">
+                                <StackPanel HorizontalAlignment="Stretch" Spacing="10"><Grid Height="126" HorizontalAlignment="Stretch" Background="#FFF1EFE9"><Border Margin="18" BorderBrush="#18000000" BorderThickness="1" CornerRadius="18" /></Grid><TextBlock Foreground="{StaticResource ConsolePrimaryTextBrush}" FontSize="16" FontWeight="SemiBold" Tag="loc:ThemeSolidLight" Text="实体白色" /></StackPanel>
+                            </ToggleButton>
+                            <ToggleButton x:Name="SolidDarkThemeCard" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Background="{StaticResource ConsoleCardSurfaceBrush}" Click="SolidDarkThemeCard_Click" HorizontalContentAlignment="Stretch">
+                                <StackPanel HorizontalAlignment="Stretch" Spacing="10"><Grid Height="126" HorizontalAlignment="Stretch" Background="#FF2F2D2D"><Border Margin="18" BorderBrush="#28FFFFFF" BorderThickness="1" CornerRadius="18" /></Grid><TextBlock Foreground="{StaticResource ConsolePrimaryTextBrush}" FontSize="16" FontWeight="SemiBold" Tag="loc:ThemeSolidDark" Text="实体黑色" /></StackPanel>
+                            </ToggleButton>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <Grid x:Name="AddPage" Margin="0,22,0,0" Background="Transparent" Visibility="Collapsed">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <TextBlock FontSize="28" FontWeight="SemiBold" Tag="loc:AddTitle" Text="添加收纳窗" />
+                    <Grid x:Name="AddPageContentGrid" Grid.Row="1" Margin="0,12,0,0" ColumnSpacing="24">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="420" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <ScrollViewer HorizontalAlignment="Left" VerticalScrollBarVisibility="Hidden">
+                            <StackPanel x:Name="AddSettingsColumn" Width="420" HorizontalAlignment="Left">
+                                <Border Style="{StaticResource Row}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Tag="loc:NameLabel" Text="名称" /><TextBox x:Name="AddNameBox" Grid.Column="1" Width="190" Height="32" HorizontalAlignment="Left" Style="{StaticResource FlatTextBoxStyle}" Text="收纳窗" TextChanged="AddNameBox_TextChanged" /></Grid></Border>
+                                <Border Style="{StaticResource Row}">
+                                    <Grid ColumnSpacing="12">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                        <TextBlock VerticalAlignment="Center" Tag="loc:StorageLocationLabel" Text="保存位置" />
+                                        <StackPanel Grid.Column="1" Spacing="5">
+                                            <TextBox x:Name="AddStoragePathBox" Height="32" IsReadOnly="True" Style="{StaticResource FlatTextBoxStyle}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Button Height="30" Click="ChooseAddStorageButton_Click" Content="选择目录" Tag="loc:ChooseFolder" />
+                                                <Button Height="30" Click="ResetAddStorageButton_Click" Content="恢复默认" Tag="loc:UseDefaultLocation" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                                <Border Style="{StaticResource Row}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Tag="loc:ModeLabel" Text="模式" /><ComboBox x:Name="AddPlacementModeCombo" Grid.Column="1" Width="190" Height="32" HorizontalAlignment="Left" SelectedIndex="0" SelectionChanged="AddControl_Changed"><ComboBoxItem Tag="loc:ModeFloating" Content="悬浮窗模式" /><ComboBoxItem Tag="loc:ModePositioned" Content="定位模式" /></ComboBox></Grid></Border>
+                                <Border x:Name="AddRowsCard" Style="{StaticResource Row}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Tag="loc:RowsLabel" Text="行数" /><controls:ConsoleSlider x:Name="AddRowsSlider" Grid.Column="1" HorizontalAlignment="Stretch" Minimum="2" Maximum="6" StepFrequency="1" Value="3" ValueChanged="AddControl_Changed" /></Grid></Border>
+                                <Border x:Name="AddColumnsCard" Style="{StaticResource Row}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Tag="loc:ColumnsLabel" Text="列数" /><controls:ConsoleSlider x:Name="AddColumnsSlider" Grid.Column="1" HorizontalAlignment="Stretch" Minimum="2" Maximum="6" StepFrequency="1" Value="3" ValueChanged="AddControl_Changed" /></Grid></Border>
+                                <Border Style="{StaticResource Row}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Tag="loc:ThemeLabel" Text="主题" /><ComboBox x:Name="AddThemeCombo" Grid.Column="1" Width="190" Height="32" HorizontalAlignment="Left" SelectionChanged="AddControl_Changed"><ComboBoxItem Tag="loc:ThemeFollowGlobal" Content="跟随全局" /><ComboBoxItem Tag="loc:ThemeLightAcrylic" Content="浅色毛玻璃" /><ComboBoxItem Tag="loc:ThemeDarkAcrylic" Content="深色毛玻璃" /><ComboBoxItem Tag="loc:ThemeSolidLight" Content="实体白色" /><ComboBoxItem Tag="loc:ThemeSolidDark" Content="实体黑色" /></ComboBox></Grid></Border>
+                                <Border x:Name="AddCompactScaleCard" Style="{StaticResource Row}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Tag="loc:CompactScaleLabel" Text="入口整体" /><controls:ConsoleSlider x:Name="AddCompactScaleSlider" Grid.Column="1" Style="{StaticResource Pct}" Minimum="1.56" Maximum="3" Value="1.56" ValueChanged="AddControl_Changed" /><TextBlock x:Name="AddCompactPercent" Grid.Column="2" VerticalAlignment="Center" TextAlignment="Right" /></Grid></Border>
+                                <Border Style="{StaticResource Row}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Tag="loc:CanvasScaleLabel" Text="画布大小" /><controls:ConsoleSlider x:Name="AddCanvasScaleSlider" Grid.Column="1" Style="{StaticResource Pct}" Minimum=".1" Maximum="1.2" Value="1" ValueChanged="AddControl_Changed" /><TextBlock x:Name="AddCanvasPercent" Grid.Column="2" VerticalAlignment="Center" TextAlignment="Right" /></Grid></Border>
+                                <Border Style="{StaticResource Row}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Tag="loc:ItemScaleLabel" Text="内容比例" /><controls:ConsoleSlider x:Name="AddItemScaleSlider" Grid.Column="1" Style="{StaticResource Pct}" Minimum=".5" Maximum="1.65" Value="1" ValueChanged="AddControl_Changed" /><TextBlock x:Name="AddItemPercent" Grid.Column="2" VerticalAlignment="Center" TextAlignment="Right" /></Grid></Border>
+                                <Border Style="{StaticResource Row}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Tag="loc:NameScaleLabel" Text="昵称大小" /><controls:ConsoleSlider x:Name="AddNameScaleSlider" Grid.Column="1" Style="{StaticResource Pct}" Minimum=".6" Maximum="1" Value="1" ValueChanged="AddControl_Changed" /><TextBlock x:Name="AddNamePercent" Grid.Column="2" VerticalAlignment="Center" TextAlignment="Right" /></Grid></Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top" Spacing="6">
+                            <Button x:Name="CreateOrganizerButton" Grid.Column="1" MinWidth="160" HorizontalAlignment="Right" VerticalAlignment="Top" Click="CreateOrganizerButton_Click" Content="创建收纳窗" Tag="loc:CreateOrganizer" Style="{StaticResource NeutralActionButtonStyle}" />
+                            <TextBlock x:Name="CreateLimitText" MaxWidth="190" Tag="loc:OrganizerLimit" Text="已达到 12 个收纳窗上限。" TextWrapping="Wrap" Visibility="Collapsed" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+
+                <Grid x:Name="ManagePage" Margin="0,22,0,0" Background="Transparent">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <TextBlock FontSize="28" FontWeight="SemiBold" Tag="loc:ManageTitle" Text="管理" />
+                    <Grid Grid.Row="1" Margin="0,12,0,0" ColumnSpacing="12">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="190" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Border Background="{StaticResource ConsoleCardSurfaceBrush}" CornerRadius="12"><Grid><ListView x:Name="ManageList" Margin="4" SelectionChanged="ManageList_SelectionChanged"><ListView.Resources><SolidColorBrush x:Key="ListViewItemSelectionIndicatorBrush" Color="Transparent" /><SolidColorBrush x:Key="ListViewItemSelectionIndicatorPointerOverBrush" Color="Transparent" /><SolidColorBrush x:Key="ListViewItemSelectionIndicatorPressedBrush" Color="Transparent" /><SolidColorBrush x:Key="ListViewItemSelectionIndicatorDisabledBrush" Color="Transparent" /></ListView.Resources></ListView><StackPanel x:Name="ManageEmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"><TextBlock Tag="loc:ManageEmpty" Text="还没有收纳窗" /><Button Click="EmptyAddButton_Click" Content="创建" Tag="loc:Create" /></StackPanel></Grid></Border>
+                        <Border x:Name="ManageDetailCard" Grid.Column="1" Padding="12" Background="{StaticResource ConsoleCardSurfaceBrush}" CornerRadius="12">
+                            <Grid x:Name="ManageEditor"><ScrollViewer VerticalScrollBarVisibility="Hidden"><StackPanel>
+                                <InfoBar x:Name="MissingStorageInfo" IsOpen="False" IsClosable="False" Severity="Warning" Title="实际目录不存在" />
+                                <Border Style="{StaticResource ManageRow}"><Grid><TextBlock VerticalAlignment="Center" Tag="loc:NameLabel" Text="名称" /><TextBox x:Name="ManageNameBox" Width="170" Height="32" HorizontalAlignment="Right" Style="{StaticResource FlatTextBoxStyle}" TextChanged="ManageEditor_Changed" /></Grid></Border><TextBlock x:Name="ManageNameError" Margin="12,-4,0,6" Foreground="#FFC42B1C" FontSize="12" Tag="loc:NameRequired" Text="名称不能为空" Visibility="Collapsed" />
+                                <Border Style="{StaticResource ManageRow}"><Grid><TextBlock VerticalAlignment="Center" Tag="loc:ModeLabel" Text="模式" /><ComboBox x:Name="ManagePlacementModeCombo" Width="170" Height="32" HorizontalAlignment="Right" SelectionChanged="ManageEditor_Changed"><ComboBoxItem Tag="loc:ModeFloating" Content="悬浮窗模式" /><ComboBoxItem Tag="loc:ModePositioned" Content="定位模式" /></ComboBox></Grid></Border>
+                                <Border x:Name="ManageRowsCard" Style="{StaticResource ManageRow}"><Grid><TextBlock VerticalAlignment="Center" Tag="loc:RowsLabel" Text="行数" /><controls:ConsoleSlider x:Name="ManageRowsSlider" Width="170" HorizontalAlignment="Right" Minimum="2" Maximum="6" StepFrequency="1" Value="3" ValueChanged="ManageEditor_Changed" /></Grid></Border><Border x:Name="ManageColumnsCard" Style="{StaticResource ManageRow}"><Grid><TextBlock VerticalAlignment="Center" Tag="loc:ColumnsLabel" Text="列数" /><controls:ConsoleSlider x:Name="ManageColumnsSlider" Width="170" HorizontalAlignment="Right" Minimum="2" Maximum="6" StepFrequency="1" Value="3" ValueChanged="ManageEditor_Changed" /></Grid></Border>
+                                <Border Style="{StaticResource ManageRow}"><Grid><TextBlock VerticalAlignment="Center" Tag="loc:ThemeLabel" Text="主题" /><ComboBox x:Name="ManageThemeCombo" Width="170" Height="32" HorizontalAlignment="Right" SelectionChanged="ManageEditor_Changed"><ComboBoxItem Tag="loc:ThemeFollowGlobal" Content="跟随全局" /><ComboBoxItem Tag="loc:ThemeLightAcrylic" Content="浅色毛玻璃" /><ComboBoxItem Tag="loc:ThemeDarkAcrylic" Content="深色毛玻璃" /><ComboBoxItem Tag="loc:ThemeSolidLight" Content="实体白色" /><ComboBoxItem Tag="loc:ThemeSolidDark" Content="实体黑色" /></ComboBox></Grid></Border>
+                                <Border x:Name="ManageCompactScaleCard" Style="{StaticResource ManageRow}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Tag="loc:CompactScaleLabel" Text="入口整体" /><controls:ConsoleSlider x:Name="ManageCompactScaleSlider" Grid.Column="1" Style="{StaticResource Pct}" Minimum="1.56" Maximum="3" Value="1.56" ValueChanged="ManageEditor_Changed" /><TextBlock x:Name="ManageCompactPercent" Grid.Column="2" VerticalAlignment="Center" TextAlignment="Right" /></Grid></Border>
+                                <Border Style="{StaticResource ManageRow}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Tag="loc:CanvasScaleLabel" Text="画布大小" /><controls:ConsoleSlider x:Name="ManageCanvasScaleSlider" Grid.Column="1" Style="{StaticResource Pct}" Minimum=".1" Maximum="1.2" Value="1" ValueChanged="ManageEditor_Changed" /><TextBlock x:Name="ManageCanvasPercent" Grid.Column="2" VerticalAlignment="Center" TextAlignment="Right" /></Grid></Border>
+                                <Border Style="{StaticResource ManageRow}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Tag="loc:ItemScaleLabel" Text="内容比例" /><controls:ConsoleSlider x:Name="ManageItemScaleSlider" Grid.Column="1" Style="{StaticResource Pct}" Minimum=".5" Maximum="1.65" Value="1" ValueChanged="ManageEditor_Changed" /><TextBlock x:Name="ManageItemPercent" Grid.Column="2" VerticalAlignment="Center" TextAlignment="Right" /></Grid></Border>
+                                <Border Style="{StaticResource ManageRow}"><Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Tag="loc:NameScaleLabel" Text="昵称大小" /><controls:ConsoleSlider x:Name="ManageNameScaleSlider" Grid.Column="1" Style="{StaticResource Pct}" Minimum=".6" Maximum="1" Value="1" ValueChanged="ManageEditor_Changed" /><TextBlock x:Name="ManageNamePercent" Grid.Column="2" VerticalAlignment="Center" TextAlignment="Right" /></Grid></Border>
+                                <Border Style="{StaticResource ManageRow}"><Grid><TextBlock VerticalAlignment="Center" Tag="loc:ActualLocation" Text="实际位置" /><StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="6"><TextBox x:Name="ManagePathBox" Width="210" Height="32" IsReadOnly="True" Style="{StaticResource FlatTextBoxStyle}" /><Button Height="32" Click="OpenManagedFolderButton_Click" Content="打开" Tag="loc:Open" /></StackPanel></Grid></Border><StackPanel Margin="0,6" Orientation="Horizontal" Spacing="8"><Button x:Name="RecreateStorageButton" Click="RecreateStorageButton_Click" Content="重建目录" Tag="loc:RecreateStorage" Visibility="Collapsed" /><Button x:Name="DeleteOrganizerButton" Click="DeleteOrganizerButton_Click" Content="导出并删除窗口" Tag="loc:ExportDelete" /></StackPanel>
+                            </StackPanel></ScrollViewer></Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </NavigationView>
+    </Grid>
+</Window>

@@ -1,0 +1,12 @@
+.vs/
+.vscode/
+artifacts/
+**/bin/
+**/obj/
+*.log
+*.pdb
+state.json
+state.json.bak
+*.user
+*.suo
+TestResults/

@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="AppTitle" xml:space="preserve"><value>TuckPane</value></data>
+  <data name="NavGeneral" xml:space="preserve"><value>通用</value></data>
+  <data name="NavTheme" xml:space="preserve"><value>主题</value></data>
+  <data name="NavAdd" xml:space="preserve"><value>添加</value></data>
+  <data name="NavManage" xml:space="preserve"><value>管理</value></data>
+  <data name="GeneralTitle" xml:space="preserve"><value>通用</value></data>
+  <data name="StartupTitle" xml:space="preserve"><value>开机时启动 TuckPane</value></data>
+  <data name="StartupDescription" xml:space="preserve"><value>静默恢复收纳窗，不显示总控台。</value></data>
+  <data name="LanguageLabel" xml:space="preserve"><value>语言</value></data>
+  <data name="LanguageDescription" xml:space="preserve"><value>切换后立即应用，无需重启。</value></data>
+  <data name="LanguageChinese" xml:space="preserve"><value>简体中文</value></data>
+  <data name="LanguageEnglish" xml:space="preserve"><value>English</value></data>
+  <data name="LanguageJapanese" xml:space="preserve"><value>日本語</value></data>
+  <data name="ThemeTitle" xml:space="preserve"><value>主题</value></data>
+  <data name="ThemeLightAcrylic" xml:space="preserve"><value>浅色毛玻璃</value></data>
+  <data name="ThemeDarkAcrylic" xml:space="preserve"><value>深色毛玻璃</value></data>
+  <data name="ThemeSolidLight" xml:space="preserve"><value>实体白色</value></data>
+  <data name="ThemeSolidDark" xml:space="preserve"><value>实体黑色</value></data>
+  <data name="AddTitle" xml:space="preserve"><value>添加收纳窗</value></data>
+  <data name="NameLabel" xml:space="preserve"><value>名称</value></data>
+  <data name="ModeLabel" xml:space="preserve"><value>模式</value></data>
+  <data name="ModeFloating" xml:space="preserve"><value>悬浮窗模式</value></data>
+  <data name="ModePositioned" xml:space="preserve"><value>定位模式</value></data>
+  <data name="RowsLabel" xml:space="preserve"><value>行数</value></data>
+  <data name="ColumnsLabel" xml:space="preserve"><value>列数</value></data>
+  <data name="ThemeLabel" xml:space="preserve"><value>主题</value></data>
+  <data name="ThemeFollowGlobal" xml:space="preserve"><value>跟随全局</value></data>
+  <data name="CompactScaleLabel" xml:space="preserve"><value>入口整体</value></data>
+  <data name="CanvasScaleLabel" xml:space="preserve"><value>画布大小</value></data>
+  <data name="ItemScaleLabel" xml:space="preserve"><value>内容比例</value></data>
+  <data name="NameScaleLabel" xml:space="preserve"><value>昵称大小</value></data>
+  <data name="CreateOrganizer" xml:space="preserve"><value>创建收纳窗</value></data>
+  <data name="OrganizerLimit" xml:space="preserve"><value>已达到 12 个收纳窗上限。</value></data>
+  <data name="ManageTitle" xml:space="preserve"><value>管理</value></data>
+  <data name="ManageEmpty" xml:space="preserve"><value>还没有收纳窗</value></data>
+  <data name="Create" xml:space="preserve"><value>创建</value></data>
+  <data name="MissingStorage" xml:space="preserve"><value>实际目录不存在</value></data>
+  <data name="NameRequired" xml:space="preserve"><value>名称不能为空</value></data>
+  <data name="ActualLocation" xml:space="preserve"><value>实际位置</value></data>
+  <data name="Open" xml:space="preserve"><value>打开</value></data>
+  <data name="RecreateStorage" xml:space="preserve"><value>重建目录</value></data>
+  <data name="ExportDelete" xml:space="preserve"><value>导出并删除窗口</value></data>
+  <data name="DefaultOrganizerName" xml:space="preserve"><value>收纳窗</value></data>
+  <data name="ItemCountOne" xml:space="preserve"><value>{0} 项</value></data>
+  <data name="ItemCountMany" xml:space="preserve"><value>{0} 项</value></data>
+  <data name="GridLayoutFormat" xml:space="preserve"><value>{0}×{1}</value></data>
+  <data name="ManageItemSummaryFormat" xml:space="preserve"><value>{0} · {1} · {2}</value></data>
+  <data name="ContextManage" xml:space="preserve"><value>设置</value></data>
+  <data name="ContextRename" xml:space="preserve"><value>重命名</value></data>
+  <data name="ContextOpenStorage" xml:space="preserve"><value>打开收纳目录</value></data>
+  <data name="Collapse" xml:space="preserve"><value>收缩</value></data>
+  <data name="TransparencyTitle" xml:space="preserve"><value>透明效果已降级</value></data>
+  <data name="TransparencyMessage" xml:space="preserve"><value>Windows 当前不提供实时毛玻璃，TuckPane 已使用匹配主题的纯色背景。</value></data>
+  <data name="FilesMovingTitle" xml:space="preserve"><value>文件仍在移动</value></data>
+  <data name="FilesMovingMessage" xml:space="preserve"><value>继续等待可以确保当前文件完整移动。确认退出将取消当前传输并清理临时副本。</value></data>
+  <data name="CancelTransferAndExit" xml:space="preserve"><value>取消传输并退出</value></data>
+  <data name="ContinueWaiting" xml:space="preserve"><value>继续等待</value></data>
+  <data name="StartupErrorTitle" xml:space="preserve"><value>无法更新开机启动</value></data>
+  <data name="CreateErrorTitle" xml:space="preserve"><value>无法创建收纳窗</value></data>
+  <data name="PositionedModeErrorTitle" xml:space="preserve"><value>无法启用定位模式</value></data>
+  <data name="DeleteTitleFormat" xml:space="preserve"><value>删除“{0}”？</value></data>
+  <data name="DeleteNonEmptyFormat" xml:space="preserve"><value>其中 {0} 将完整导出为桌面文件夹“{1}（已导出）”。</value></data>
+  <data name="DeleteEmpty" xml:space="preserve"><value>这是一个空窗口，不会在桌面创建空文件夹。</value></data>
+  <data name="Cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="DeleteErrorTitle" xml:space="preserve"><value>无法删除收纳窗</value></data>
+  <data name="OpenFolderErrorTitle" xml:space="preserve"><value>无法打开文件夹</value></data>
+  <data name="MissingStorageMessage" xml:space="preserve"><value>实际目录不存在，请先使用“重建目录”。</value></data>
+  <data name="MaximumOrganizersError" xml:space="preserve"><value>最多只能创建 12 个收纳窗。</value></data>
+  <data name="NoPrimaryGridError" xml:space="preserve"><value>主显示器没有可用的桌面网格位置，未创建收纳窗。</value></data>
+  <data name="PositionedRollbackError" xml:space="preserve"><value>当前显示器没有可用的桌面网格位置，已恢复悬浮窗模式。</value></data>
+  <data name="TransferBeforeDelete" xml:space="preserve"><value>文件传输完成后才能删除窗口。</value></data>
+  <data name="GridFallbackMessage" xml:space="preserve"><value>暂时无法读取桌面文件位置，定位模式仍会按系统网格吸附并避让其他收纳窗。</value></data>
+  <data name="TransparencyNotification" xml:space="preserve"><value>系统透明效果不可用，当前使用匹配主题的纯色背景。</value></data>
+  <data name="TrayOpenConsole" xml:space="preserve"><value>打开总控台</value></data>
+  <data name="TrayShowAll" xml:space="preserve"><value>显示全部收纳窗</value></data>
+  <data name="TrayHideAll" xml:space="preserve"><value>隐藏全部收纳窗</value></data>
+  <data name="TrayStartup" xml:space="preserve"><value>开机启动</value></data>
+  <data name="TrayCancelTransfer" xml:space="preserve"><value>取消当前移动</value></data>
+  <data name="TrayExit" xml:space="preserve"><value>退出</value></data>
+  <data name="DragReturnToGrid" xml:space="preserve"><value>目标显示器没有可用网格，已返回原位置。</value></data>
+  <data name="OpenItemErrorFormat" xml:space="preserve"><value>无法打开“{0}”：{1}</value></data>
+  <data name="ShortcutDragError" xml:space="preserve"><value>无法启动快捷方式拖动。</value></data>
+  <data name="DragItemErrorFormat" xml:space="preserve"><value>无法拖动“{0}”：{1}</value></data>
+  <data name="DragMoveHere" xml:space="preserve"><value>移动到这里</value></data>
+  <data name="DragMoveEnd" xml:space="preserve"><value>移动到末尾</value></data>
+  <data name="DragIntoApp" xml:space="preserve"><value>移入 TuckPane</value></data>
+  <data name="DragReorder" xml:space="preserve"><value>调整顺序</value></data>
+  <data name="ReadDropErrorFormat" xml:space="preserve"><value>无法读取拖入项目：{0}</value></data>
+  <data name="MovingItemsFormat" xml:space="preserve"><value>正在移入 {0}。</value></data>
+  <data name="MovedItemsFormat" xml:space="preserve"><value>已移入 {0}。</value></data>
+  <data name="MoveCancelled" xml:space="preserve"><value>移动已取消，未完成项目的源内容保持不变。</value></data>
+  <data name="RenamePlaceholder" xml:space="preserve"><value>输入组件名称</value></data>
+  <data name="RenameTitle" xml:space="preserve"><value>重命名 TuckPane</value></data>
+  <data name="Save" xml:space="preserve"><value>保存</value></data>
+  <data name="SaveConfigurationError" xml:space="preserve"><value>配置暂时无法保存。</value></data>
+  <data name="UnsupportedItemsFormat" xml:space="preserve"><value>已保留但不显示不支持的项目：{0}</value></data>
+  <data name="NoImportableItems" xml:space="preserve"><value>没有可导入的项目。</value></data>
+  <data name="InvalidPathFormat" xml:space="preserve"><value>路径无效：{0}</value></data>
+  <data name="MissingItemFormat" xml:space="preserve"><value>项目不存在：{0}</value></data>
+  <data name="CannotReadFormat" xml:space="preserve"><value>无法读取：{0}（{1}）</value></data>
+  <data name="UnsupportedReparseFormat" xml:space="preserve"><value>暂不支持链接目录或重解析点：{0}</value></data>
+  <data name="RecursiveImportFormat" xml:space="preserve"><value>不能导入收纳目录本身或它的父子目录：{0}</value></data>
+  <data name="DirectoryReparseFormat" xml:space="preserve"><value>目录内含不支持的重解析点：{0}</value></data>
+  <data name="DirectoryReadErrorFormat" xml:space="preserve"><value>无法完整读取目录：{0}（{1}）</value></data>
+  <data name="StorageMissingDeleted" xml:space="preserve"><value>缺失的收纳窗记录已删除。</value></data>
+  <data name="EmptyDeleted" xml:space="preserve"><value>空收纳窗已删除。</value></data>
+  <data name="DesktopUnavailable" xml:space="preserve"><value>无法确定桌面目录。</value></data>
+  <data name="ExportedDesktop" xml:space="preserve"><value>已导出到桌面。</value></data>
+  <data name="ExportedDesktopCrossVolume" xml:space="preserve"><value>已跨盘导出到桌面。</value></data>
+  <data name="ExportCancelled" xml:space="preserve"><value>导出已取消，原窗口保持不变。</value></data>
+  <data name="ShortcutCreated" xml:space="preserve"><value>已创建程序快捷方式。</value></data>
+  <data name="Moved" xml:space="preserve"><value>已移动。</value></data>
+  <data name="MoveSourceRetained" xml:space="preserve"><value>移动已取消，源项目保持不变。</value></data>
+  <data name="CrossVolumeMoved" xml:space="preserve"><value>跨盘移动完成。</value></data>
+  <data name="DuplicateRetained" xml:space="preserve"><value>目标副本已保留，但源项目无法删除；当前有两份完整内容。</value></data>
+  <data name="MoveFailedFormat" xml:space="preserve"><value>移动失败：{0}</value></data>
+  <data name="StartupPathUnavailable" xml:space="preserve"><value>无法确定 TuckPane 可执行文件路径。</value></data>
+  <data name="ShellDragMissing" xml:space="preserve"><value>拖动项目不存在。</value></data>
+  <data name="AppStartupErrorTitle" xml:space="preserve"><value>TuckPane 启动失败</value></data>
+  <data name="ExportFolderFormat" xml:space="preserve"><value>{0}（已导出）</value></data>
+  <data name="ShellUnavailable" xml:space="preserve"><value>Windows Shell 不可用。</value></data>
+  <data name="CopySizeMismatch" xml:space="preserve"><value>复制后的文件大小与源文件不一致。</value></data>
+  <data name="LegacyInstanceMessage" xml:space="preserve"><value>检测到 TuckPane 或旧版 GlassFolder 仍在运行。请先从托盘菜单退出，再启动 TuckPane；你的收纳内容不会被删除。</value></data>
+  <data name="StorageOutsideRoot" xml:space="preserve"><value>收纳目录超出了 TuckPane 数据根目录。</value></data>
+  <data name="StorageAbsoluteRequired" xml:space="preserve"><value>自定义保存位置必须是完整的本地路径。</value></data>
+  <data name="StorageLocationLabel" xml:space="preserve"><value>保存位置</value></data>
+  <data name="ChooseFolder" xml:space="preserve"><value>选择目录</value></data>
+  <data name="UseDefaultLocation" xml:space="preserve"><value>恢复默认</value></data>
+  <data name="SelectStorageFolderTitle" xml:space="preserve"><value>选择收纳窗保存位置</value></data>
+  <data name="SelectStorageFolderCommit" xml:space="preserve"><value>选择此文件夹</value></data>
+  <data name="StorageFolderPickerError" xml:space="preserve"><value>无法选择保存位置</value></data>
+  <data name="RecreateStorageErrorTitle" xml:space="preserve"><value>无法重建收纳目录</value></data>
+  <data name="MoveToDesktopFailed" xml:space="preserve"><value>无法将项目移动到桌面。</value></data>
+  <data name="LanguageErrorTitle" xml:space="preserve"><value>无法切换语言</value></data>
+  <data name="UnsupportedReparsePathFormat" xml:space="preserve"><value>目录中包含不支持的重解析点：{0}</value></data>
+  <data name="CopyVerificationFailed" xml:space="preserve"><value>复制校验失败，源目录与目标临时目录不一致。</value></data>
+  <data name="WindowMinimize" xml:space="preserve"><value>最小化</value></data>
+  <data name="WindowClose" xml:space="preserve"><value>关闭到托盘</value></data>
+</root>

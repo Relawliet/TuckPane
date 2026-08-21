@@ -1,0 +1,226 @@
+<Window
+    x:Class="TuckPane.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid
+        x:Name="WindowRoot"
+        AllowDrop="True"
+        Background="Transparent"
+        UseLayoutRounding="True"
+        DragEnter="WindowRoot_DragEnter"
+        DragLeave="WindowRoot_DragLeave"
+        DragOver="WindowRoot_DragOver"
+        Drop="WindowRoot_Drop"
+        KeyDown="WindowRoot_KeyDown">
+
+        <Grid
+            x:Name="CompactView"
+            Width="76"
+            Height="68"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center">
+            <Grid.ContextFlyout>
+                <MenuFlyout x:Name="CompactTileContextMenu">
+                    <MenuFlyoutItem x:Name="CompactManageMenuItem" Click="ManageMenuItem_Click" Text="设置" />
+                    <MenuFlyoutItem x:Name="CompactRenameMenuItem" Click="RenameMenuItem_Click" Text="重命名" />
+                    <MenuFlyoutItem x:Name="CompactOpenStorageMenuItem" Click="OpenStorageMenuItem_Click" Text="打开收纳目录" />
+                </MenuFlyout>
+            </Grid.ContextFlyout>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="39" />
+                <RowDefinition Height="4" />
+                <RowDefinition Height="23" />
+            </Grid.RowDefinitions>
+            <Grid
+                x:Name="CompactTile"
+                Grid.Row="0"
+                Width="39"
+                Height="39"
+                HorizontalAlignment="Center"
+                Background="Transparent"
+                PointerCanceled="CompactTile_PointerCanceled"
+                PointerCaptureLost="CompactTile_PointerCaptureLost"
+                PointerMoved="CompactTile_PointerMoved"
+                PointerPressed="CompactTile_PointerPressed"
+                PointerReleased="CompactTile_PointerReleased">
+                <Grid
+                    x:Name="CompactThumbnailHost"
+                    Width="39"
+                    Height="39"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                    <Grid x:Name="CompactSurfaceHost" />
+                    <Grid x:Name="CompactIconPresenter">
+                        <Grid x:Name="CompactPreviewGrid" IsHitTestVisible="False">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition />
+                                <RowDefinition />
+                            </Grid.RowDefinitions>
+                            <Image Grid.Row="0" Grid.Column="0" Stretch="Uniform" />
+                            <Image Grid.Row="0" Grid.Column="1" Stretch="Uniform" />
+                            <Image Grid.Row="1" Grid.Column="0" Stretch="Uniform" />
+                            <Image Grid.Row="1" Grid.Column="1" Stretch="Uniform" />
+                        </Grid>
+                    </Grid>
+                </Grid>
+                <FontIcon
+                    x:Name="CompactWarningIcon"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    FontSize="18"
+                    Foreground="#FFFFC857"
+                    Glyph="&#xE814;"
+                    Visibility="Collapsed" />
+            </Grid>
+            <TextBlock
+                x:Name="CompactNameText"
+                Grid.Row="2"
+                MaxWidth="72"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                FontFamily="Segoe UI Variable Display"
+                FontSize="13"
+                FontWeight="SemiBold"
+                Foreground="White"
+                IsTextSelectionEnabled="False"
+                Text="文件夹"
+                TextAlignment="Center"
+                TextTrimming="CharacterEllipsis" />
+        </Grid>
+
+        <Grid
+            x:Name="ExpandedView"
+            Background="Transparent"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            Opacity="0"
+            UseLayoutRounding="True"
+            Visibility="Collapsed">
+            <Grid.ContextFlyout>
+                <MenuFlyout x:Name="ExpandedViewContextMenu">
+                    <MenuFlyoutItem x:Name="ExpandedManageMenuItem" Click="ManageMenuItem_Click" Text="设置" />
+                    <MenuFlyoutItem x:Name="ExpandedRenameMenuItem" Click="RenameMenuItem_Click" Text="重命名" />
+                    <MenuFlyoutItem x:Name="ExpandedOpenStorageMenuItem" Click="OpenStorageMenuItem_Click" Text="打开收纳目录" />
+                </MenuFlyout>
+            </Grid.ContextFlyout>
+            <Grid x:Name="ExpandedSurfaceHost" />
+            <Grid x:Name="ExpandedContentLayer" Background="Transparent">
+                <Button
+                x:Name="CollapseButton"
+                Width="28"
+                Height="28"
+                Margin="0,10,14,0"
+                Padding="0"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Background="Transparent"
+                BorderThickness="0"
+                Click="CollapseButton_Click"
+                PointerCanceled="CollapseButton_PointerReleased"
+                PointerExited="CollapseButton_PointerReleased"
+                PointerPressed="CollapseButton_PointerPressed"
+                PointerReleased="CollapseButton_PointerReleased"
+                AutomationProperties.Name="收缩"
+                Canvas.ZIndex="2">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                    </ControlTemplate>
+                </Button.Template>
+                <Border
+                    x:Name="CollapseDash"
+                    Width="12"
+                    Height="1"
+                    Background="White"
+                    CornerRadius="0.5" />
+                </Button>
+                <ScrollView
+                x:Name="ItemsScrollView"
+                HorizontalScrollBarVisibility="Hidden"
+                HorizontalScrollMode="Disabled"
+                SizeChanged="ItemsScrollView_SizeChanged"
+                VerticalScrollBarVisibility="Hidden"
+                VerticalScrollMode="Enabled">
+                <ItemsRepeater
+                    x:Name="ItemsRepeater"
+                    AllowDrop="True"
+                    Background="Transparent"
+                    Margin="28,40.5,28,28"
+                    DragEnter="ItemsGrid_DragEnter"
+                    DragLeave="ItemsGrid_DragLeave"
+                    DragOver="ItemsGrid_DragOver"
+                    Drop="ItemsGrid_Drop"
+                    ElementClearing="ItemsRepeater_ElementClearing"
+                    ElementPrepared="ItemsRepeater_ElementPrepared">
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate>
+                            <Border
+                                x:Name="ItemHost"
+                                Background="Transparent"
+                                CornerRadius="16"
+                                Padding="5"
+                                PointerCanceled="Item_PointerCanceled"
+                                PointerEntered="Item_PointerEntered"
+                                PointerExited="Item_PointerExited"
+                                PointerCaptureLost="Item_PointerCaptureLost"
+                                PointerMoved="Item_PointerMoved"
+                                PointerPressed="Item_PointerPressed"
+                                PointerReleased="Item_PointerReleased"
+                                Tag="{Binding RelativeName}">
+                                <StackPanel
+                                    x:Name="ItemContent"
+                                    DoubleTapped="Item_DoubleTapped"
+                                    HorizontalAlignment="Center"
+                                    Tag="{Binding RelativeName}"
+                                    VerticalAlignment="Center"
+                                    Spacing="6">
+                                    <StackPanel.ContextFlyout>
+                                        <MenuFlyout x:Name="ItemContextMenu">
+                                            <MenuFlyoutItem Click="ManageMenuItem_Click" Text="设置" />
+                                            <MenuFlyoutItem Click="RenameMenuItem_Click" Text="重命名" />
+                                            <MenuFlyoutItem Click="OpenStorageMenuItem_Click" Text="打开收纳目录" />
+                                        </MenuFlyout>
+                                    </StackPanel.ContextFlyout>
+                                    <Grid x:Name="ItemIconContainer" Width="72" Height="72">
+                                        <FontIcon
+                                            x:Name="ItemFallbackIcon"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            FontFamily="Segoe Fluent Icons"
+                                            FontSize="42"
+                                            Glyph="&#xE7C3;" />
+                                        <Image
+                                            x:Name="ItemImage"
+                                            Width="72"
+                                            Height="72"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Stretch="Uniform" />
+                                    </Grid>
+                                    <TextBlock
+                                        x:Name="ItemNameText"
+                                        MaxWidth="132"
+                                        FontFamily="Segoe UI Variable Text"
+                                        FontSize="13"
+                                        Foreground="White"
+                                        IsHitTestVisible="False"
+                                        Text="{Binding Name}"
+                                        TextAlignment="Center"
+                                        TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+                </ScrollView>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
