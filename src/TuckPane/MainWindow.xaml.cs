@@ -77,6 +77,7 @@ public sealed partial class MainWindow : Window
     private RectangleClip? _compactClip;
     private RectangleClip? _expandedClip;
     private Visual? _expandedCompositionVisual;
+    private OutsideClickHook? _outsideClickHook;
     private int _compactPreviewVersion;
     private double _transitionProgress;
     private double _transitionVelocity;
@@ -224,7 +225,24 @@ public sealed partial class MainWindow : Window
         _itemTouchHoldTimer.Tick += ItemTouchHoldTimer_Tick;
 
         Activated += MainWindow_Activated;
+        Activated += MainWindow_ActivationChanged;
         Closed += MainWindow_Closed;
+    }
+
+    private void MainWindow_ActivationChanged(object sender, WindowActivatedEventArgs args)
+    {
+        if (args.WindowActivationState == WindowActivationState.Deactivated && _expanded && !_animating)
+        {
+            _ = CollapseAsync();
+        }
+    }
+
+    private void OnOutsideClick()
+    {
+        if (_expanded && !_animating)
+        {
+            _ = CollapseAsync();
+        }
     }
 
     public void ApplyLanguage()
@@ -323,6 +341,7 @@ public sealed partial class MainWindow : Window
         if (normalizedVisualScales) await SaveStateAsync();
 
         _desktopLayer = new DesktopLayerService(_hwnd);
+        _outsideClickHook = new OutsideClickHook(_hwnd, DispatcherQueue, OnOutsideClick);
         ApplyBounds(_compactBounds, show: true);
         if (!_uiSettings.AdvancedEffectsEnabled)
         {
@@ -979,6 +998,7 @@ public sealed partial class MainWindow : Window
                 ExpandedView.Opacity = 1;
                 GetExpandedCompositionVisual().Scale = Vector3.One;
                 _animating = false;
+                _outsideClickHook?.Start();
                 if (scrollToEnd) ScrollToEnd(animated: false);
                 WindowRoot.Focus(FocusState.Programmatic);
             }
@@ -1024,6 +1044,7 @@ public sealed partial class MainWindow : Window
                 LogCollapseHandoffError();
                 _collapseTransitionGeometry = null;
                 _animating = false;
+                _outsideClickHook?.Stop();
                 _desktopLayer?.Reattach();
                 _host.NotifyCollapsed(this);
             }
@@ -3280,6 +3301,7 @@ public sealed partial class MainWindow : Window
         _compactSurface.Dispose();
         _expandedSurface.Dispose();
         _watcher?.Dispose();
+        _outsideClickHook?.Dispose();
         if (_hwnd != IntPtr.Zero)
         {
             _ = NativeMethods.RemoveWindowSubclass(_hwnd, _gestureWindowProc, GestureSubclassId);
