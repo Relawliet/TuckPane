@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version = '1.0.1'
+    [string]$Version = '1.0.2'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -63,9 +63,6 @@ if ($privateArtifacts.Count -gt 0) {
     throw "Private/debug files entered the package: $($privateArtifacts.FullName -join ', ')"
 }
 
-$portablePath = Join-Path $releaseRoot "TuckPane-$Version-win-x64-portable.zip"
-Compress-Archive -Path (Join-Path $publishRoot '*') -DestinationPath $portablePath -CompressionLevel Optimal
-
 $isccCandidates = @(
     (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
     (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe'),
@@ -79,6 +76,16 @@ if ($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }
 
 $setupPath = Join-Path $releaseRoot "TuckPane-$Version-win-x64-setup.exe"
 if (-not (Test-Path -LiteralPath $setupPath)) { throw "Installer was not created: $setupPath" }
+
+$portableLauncher = Join-Path $publishRoot '00-启动 TuckPane.exe'
+Copy-Item -LiteralPath (Join-Path $publishRoot 'TuckPane.exe') -Destination $portableLauncher
+if ((Get-FileHash -LiteralPath $portableLauncher -Algorithm SHA256).Hash -ne
+    (Get-FileHash -LiteralPath (Join-Path $publishRoot 'TuckPane.exe') -Algorithm SHA256).Hash) {
+    throw 'Portable launcher does not match TuckPane.exe.'
+}
+
+$portablePath = Join-Path $releaseRoot "TuckPane-$Version-win-x64-portable.zip"
+Compress-Archive -Path (Join-Path $publishRoot '*') -DestinationPath $portablePath -CompressionLevel Optimal
 
 $hashPath = Join-Path $releaseRoot 'SHA256SUMS.txt'
 $hashLines = @($setupPath, $portablePath) | ForEach-Object {
