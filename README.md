@@ -4,7 +4,7 @@ Windows 11 x64 桌面文件收纳工具。
 
 ## 下载
 
-从 [Releases](https://github.com/ch998244353/TuckPane/releases/latest) 下载：
+从 [Releases](/https://github.com/Relawliet/TuckPane/releases/latest) 下载：
 
 - `TuckPane-1.0.2-win-x64-setup.exe`：离线安装器，无需管理员权限，自动创建桌面快捷方式。
 - `TuckPane-1.0.2-win-x64-portable.zip`：解压后双击 `00-启动 TuckPane.exe`。
