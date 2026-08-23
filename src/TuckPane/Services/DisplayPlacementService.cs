@@ -92,6 +92,38 @@ internal static class DisplayPlacementService
     internal static double CalculateMaximumItemScale(DisplayInfo display, OrganizerLayout layout, double canvasScale)
     {
         double cellDip = CalculateCanvasCell(display, layout, canvasScale) / display.Scale;
+        return CalculateMaximumItemScaleForCell(cellDip);
+    }
+
+    internal static double CalculateMaximumItemScaleForExpandedSize(
+        OrganizerLayout layout,
+        double widthDip,
+        double heightDip)
+    {
+        int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumLayoutDimension);
+        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumLayoutDimension);
+        double availableWidth = Math.Max(1, widthDip - ExpandedSideInsetDip * 2);
+        double availableHeight = Math.Max(1, heightDip - ExpandedTopInsetDip - ExpandedBottomInsetDip);
+        double cellDip = Math.Min(
+            CalculateGridCellExtent(availableWidth, columns, ItemGapDip),
+            CalculateGridCellExtent(availableHeight, rows, ItemGapDip));
+        return CalculateMaximumItemScaleForCell(cellDip);
+    }
+
+    internal static (double WidthDip, double HeightDip) CalculateMinimumExpandedSizeDip(
+        OrganizerLayout layout,
+        double itemScale)
+    {
+        int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumLayoutDimension);
+        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumLayoutDimension);
+        double cell = CalculateRequiredCellDip(itemScale);
+        return (
+            cell * columns + ItemGapDip * (columns - 1) + ExpandedSideInsetDip * 2,
+            cell * rows + ItemGapDip * (rows - 1) + ExpandedTopInsetDip + ExpandedBottomInsetDip);
+    }
+
+    private static double CalculateMaximumItemScaleForCell(double cellDip)
+    {
         if (CalculateRequiredCellDip(.5) >= cellDip) return .5;
         double low = .5;
         double high = MaximumItemScale;
@@ -145,35 +177,55 @@ internal static class DisplayPlacementService
         NativeMethods.RECT compact,
         DisplayInfo display,
         OrganizerLayout layout,
-        double canvasScale)
+        double canvasScale,
+        double? manualCanvasBaseWidthDip = null,
+        double? manualCanvasBaseHeightDip = null)
     {
-        int margin = (int)Math.Round(24 * display.Scale);
-        double baseCell = CalculateBaseCell(display);
+        NativeMethods.RECT insetWork = GetExpandedWorkArea(display);
         int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumLayoutDimension);
         int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumLayoutDimension);
-        double cell = CalculateCanvasCell(display, layout, canvasScale);
-        double gap = ItemGapDip * display.Scale;
-        int width = Math.Max(1, (int)Math.Round(
-            cell * columns + gap * (columns - 1) + ExpandedSideInsetDip * 2 * display.Scale));
-        int height = Math.Max(1, (int)Math.Round(
-            cell * rows + gap * (rows - 1) + (ExpandedTopInsetDip + ExpandedBottomInsetDip) * display.Scale));
+        double width;
+        double height;
+        if (manualCanvasBaseWidthDip is double baseWidth && manualCanvasBaseHeightDip is double baseHeight &&
+            double.IsFinite(baseWidth) && double.IsFinite(baseHeight) && baseWidth > 0 && baseHeight > 0)
+        {
+            width = baseWidth * Math.Clamp(canvasScale, .1, 1.2) * display.Scale;
+            height = baseHeight * Math.Clamp(canvasScale, .1, 1.2) * display.Scale;
+            double fit = Math.Min(1, Math.Min(insetWork.Width / width, insetWork.Height / height));
+            width *= fit;
+            height *= fit;
+        }
+        else
+        {
+            double cell = CalculateCanvasCell(display, layout, canvasScale);
+            double gap = ItemGapDip * display.Scale;
+            width = cell * columns + gap * (columns - 1) + ExpandedSideInsetDip * 2 * display.Scale;
+            height = cell * rows + gap * (rows - 1) + (ExpandedTopInsetDip + ExpandedBottomInsetDip) * display.Scale;
+        }
+        int widthPx = Math.Max(1, (int)Math.Round(width));
+        int heightPx = Math.Max(1, (int)Math.Round(height));
         int centerX = compact.Left + compact.Width / 2;
         int centerY = compact.Top + (int)Math.Round(19.5 * display.Scale);
         var desired = new NativeMethods.RECT
         {
-            Left = centerX - width / 2,
-            Top = centerY - height / 2,
-            Right = centerX - width / 2 + width,
-            Bottom = centerY - height / 2 + height
+            Left = centerX - widthPx / 2,
+            Top = centerY - heightPx / 2,
+            Right = centerX - widthPx / 2 + widthPx,
+            Bottom = centerY - heightPx / 2 + heightPx
         };
-        var insetWork = new NativeMethods.RECT
+        return Clamp(desired, insetWork);
+    }
+
+    internal static NativeMethods.RECT GetExpandedWorkArea(DisplayInfo display)
+    {
+        int margin = (int)Math.Round(24 * display.Scale);
+        return new NativeMethods.RECT
         {
             Left = display.Work.Left + margin,
             Top = display.Work.Top + margin,
             Right = display.Work.Right - margin,
             Bottom = display.Work.Bottom - margin
         };
-        return Clamp(desired, insetWork);
     }
 
     private static double CalculateBaseCell(DisplayInfo display)

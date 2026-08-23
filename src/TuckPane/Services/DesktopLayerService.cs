@@ -7,6 +7,7 @@ public sealed class DesktopLayerService : IDisposable
     private readonly IntPtr _originalOwner;
     private readonly NativeMethods.SubclassProc _activationGuard;
     private static readonly UIntPtr ActivationSubclassId = new(0x47464C59UL);
+    private static IntPtr? _hiddenOwner;
     private IntPtr _desktopIconView;
     private bool _allowActivation;
     private bool _expanded;
@@ -15,6 +16,11 @@ public sealed class DesktopLayerService : IDisposable
     {
         _window = window;
         _originalOwner = NativeMethods.GetWindowLongPtr(window, NativeMethods.GWLP_HWNDPARENT);
+        // 收纳盒窗口创建时没有 owner（GWLP_HWNDPARENT 为 0）。展开时若把它设回 0，
+        // 窗口会变成无 owner 的顶层窗口，从而在任务栏出现按钮。
+        // 用一个不可见的 STATIC 窗口作为 owner，窗口始终是 owned window（不进任务栏），
+        // 同时仍能提到普通窗口之上。
+        if (_originalOwner == IntPtr.Zero) _originalOwner = HiddenOwnerWindow;
         _activationGuard = ActivationGuard;
         ApplyToolWindowStyle();
         _ = NativeMethods.SetWindowSubclass(_window, _activationGuard, ActivationSubclassId, IntPtr.Zero);
@@ -125,6 +131,28 @@ public sealed class DesktopLayerService : IDisposable
         {
             _ = NativeMethods.RemoveWindowSubclass(_window, _activationGuard, ActivationSubclassId);
             _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _originalOwner);
+        }
+    }
+
+    private static IntPtr HiddenOwnerWindow
+    {
+        get
+        {
+            if (_hiddenOwner is IntPtr owner && owner != IntPtr.Zero) return owner;
+            _hiddenOwner = NativeMethods.CreateWindowEx(
+                NativeMethods.WS_EX_TOOLWINDOW,
+                "STATIC",
+                null,
+                0,
+                0,
+                0,
+                0,
+                0,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero);
+            return _hiddenOwner ?? IntPtr.Zero;
         }
     }
 

@@ -7,11 +7,15 @@ internal static class NativeMethods
 {
     internal const int GWL_STYLE = -16;
     internal const int GWL_EXSTYLE = -20;
+    internal const int GWLP_WNDPROC = -4;
     internal const int GWLP_HWNDPARENT = -8;
     internal const long WS_EX_TOOLWINDOW = 0x00000080L;
     internal const long WS_EX_APPWINDOW = 0x00040000L;
     internal const long WS_EX_NOACTIVATE = 0x08000000L;
     internal const long WS_POPUP = 0x80000000L;
+    internal const long WS_CHILD = 0x40000000L;
+    internal const long WS_VISIBLE = 0x10000000L;
+    internal const long WS_EX_LAYERED = 0x00080000L;
     internal const long WS_CAPTION = 0x00C00000L;
     internal const long WS_THICKFRAME = 0x00040000L;
     internal const long WS_SYSMENU = 0x00080000L;
@@ -24,6 +28,8 @@ internal static class NativeMethods
     internal const uint SWP_NOACTIVATE = 0x0010;
     internal const uint SWP_FRAMECHANGED = 0x0020;
     internal const uint SWP_SHOWWINDOW = 0x0040;
+    internal const uint SWP_HIDEWINDOW = 0x0080;
+    internal const uint LWA_ALPHA = 0x00000002;
     internal const uint MONITOR_DEFAULTTONEAREST = 2;
     internal const uint MONITOR_DEFAULTTOPRIMARY = 1;
     internal const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
@@ -38,6 +44,7 @@ internal static class NativeMethods
     internal const int WM_LBUTTONDOWN = 0x0201;
     internal const int WM_LBUTTONUP = 0x0202;
     internal const int WM_MOUSEMOVE = 0x0200;
+    internal const int VK_LBUTTON = 0x01;
     internal const uint MK_LBUTTON = 0x0001;
     internal const uint WM_QUIT = 0x0012;
     internal const uint WM_APP_START_ITEM_EXTERNAL_DRAG = 0x8123;
@@ -47,11 +54,28 @@ internal static class NativeMethods
     internal const int WM_MBUTTONDOWN = 0x0207;
     internal const int WM_MBUTTONUP = 0x0208;
     internal const uint WM_MOUSEACTIVATE = 0x0021;
+    internal const uint WM_SETCURSOR = 0x0020;
     internal const uint WM_NCHITTEST = 0x0084;
+    internal const uint WM_NCLBUTTONDOWN = 0x00A1;
+    internal const uint WM_NCLBUTTONUP = 0x00A2;
     internal const int HTCLIENT = 1;
+    internal const int HTLEFT = 10;
+    internal const int HTRIGHT = 11;
+    internal const int HTTOP = 12;
+    internal const int HTTOPLEFT = 13;
+    internal const int HTTOPRIGHT = 14;
+    internal const int HTBOTTOM = 15;
+    internal const int HTBOTTOMLEFT = 16;
+    internal const int HTBOTTOMRIGHT = 17;
     internal const int WM_KEYDOWN = 0x0100;
     internal const int WM_SYSKEYDOWN = 0x0104;
     internal const int VK_ESCAPE = 0x1B;
+    internal const int VK_CONTROL = 0x11;
+    internal const uint IDC_ARROW = 32512;
+    internal const uint IDC_SIZENWSE = 32642;
+    internal const uint IDC_SIZENESW = 32643;
+    internal const uint IDC_SIZEWE = 32644;
+    internal const uint IDC_SIZENS = 32645;
     internal const uint WM_GETMINMAXINFO = 0x0024;
     internal const uint WM_NCACTIVATE = 0x0086;
     internal const uint WM_NCCALCSIZE = 0x0083;
@@ -120,6 +144,7 @@ internal static class NativeMethods
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct POINT { public int X; public int Y; }
+
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct RECT
@@ -287,6 +312,7 @@ internal static class NativeMethods
     internal delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
     internal delegate bool MonitorEnumProc(IntPtr monitor, IntPtr hdc, ref RECT rect, IntPtr data);
     internal delegate IntPtr HookProc(int code, IntPtr wParam, IntPtr lParam);
+    internal delegate IntPtr WindowProc(IntPtr hWnd, uint message, UIntPtr wParam, IntPtr lParam);
     internal delegate IntPtr SubclassProc(IntPtr hWnd, uint message, UIntPtr wParam, IntPtr lParam, UIntPtr subclassId, IntPtr referenceData);
 
     [ComImport]
@@ -306,6 +332,29 @@ internal static class NativeMethods
 
     [DllImport("user32.dll", EntryPoint = "FindWindowW", CharSet = CharSet.Unicode)]
     internal static extern IntPtr FindWindow(string? className, string? windowName);
+
+    [DllImport("user32.dll", EntryPoint = "CreateWindowExW", CharSet = CharSet.Unicode, SetLastError = true)]
+    internal static extern IntPtr CreateWindowEx(
+        long extendedStyle,
+        string className,
+        string? windowName,
+        long style,
+        int x,
+        int y,
+        int width,
+        int height,
+        IntPtr parent,
+        IntPtr menu,
+        IntPtr instance,
+        IntPtr parameter);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool DestroyWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool SetLayeredWindowAttributes(IntPtr hWnd, uint colorKey, byte alpha, uint flags);
 
     [DllImport("user32.dll", EntryPoint = "FindWindowExW", CharSet = CharSet.Unicode)]
     internal static extern IntPtr FindWindowEx(IntPtr parent, IntPtr childAfter, string? className, string? windowName);
@@ -341,6 +390,9 @@ internal static class NativeMethods
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
     internal static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int index, IntPtr value);
 
+    [DllImport("user32.dll", EntryPoint = "CallWindowProcW")]
+    internal static extern IntPtr CallWindowProc(IntPtr previousWindowProc, IntPtr hWnd, uint message, UIntPtr wParam, IntPtr lParam);
+
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool SetWindowPos(IntPtr hWnd, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
@@ -348,6 +400,10 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool GetClientRect(IntPtr hWnd, out RECT rect);
 
     [DllImport("user32.dll")]
     internal static extern IntPtr WindowFromPoint(POINT point);
@@ -391,11 +447,28 @@ internal static class NativeMethods
     internal static extern bool GetCursorPos(out POINT point);
 
     [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll", EntryPoint = "LoadCursorW")]
+    internal static extern IntPtr LoadCursor(IntPtr instance, UIntPtr cursorName);
+
+    [DllImport("user32.dll")]
+    internal static extern IntPtr SetCursor(IntPtr cursor);
+
+    [DllImport("user32.dll")]
+    internal static extern short GetKeyState(int key);
+
+    [DllImport("user32.dll")]
+    internal static extern short GetAsyncKeyState(int key);
+
+    [DllImport("user32.dll")]
     internal static extern IntPtr SetCapture(IntPtr hWnd);
 
     [DllImport("user32.dll", EntryPoint = "PostMessageW")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool PostMessage(IntPtr hWnd, uint message, UIntPtr wParam, IntPtr lParam);
+
 
     [DllImport("user32.dll", EntryPoint = "PostThreadMessageW")]
     [return: MarshalAs(UnmanagedType.Bool)]
