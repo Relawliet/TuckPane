@@ -78,7 +78,7 @@ public sealed class StorageService
             return new(_itemsRoot, null, TransferStatus.Moved, AppStrings.Get("EmptyDeleted"));
         }
 
-        string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        string desktop = AppPaths.DesktopRoot;
         if (string.IsNullOrWhiteSpace(desktop)) return new(_itemsRoot, null, TransferStatus.Failed, AppStrings.Get("DesktopUnavailable"));
         Directory.CreateDirectory(desktop);
         string destination = GetUniquePath(Path.Combine(desktop, AppStrings.Format("ExportFolderFormat", SanitizeName(windowName))), isDirectory: true);

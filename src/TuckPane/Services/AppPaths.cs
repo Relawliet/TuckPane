@@ -17,6 +17,9 @@ public static class AppPaths
     public static string StatePath { get; } = Path.Combine(LocalRoot, "state.json");
     public static string BackupStatePath { get; } = Path.Combine(LocalRoot, "state.json.bak");
     public static string LogPath { get; } = Path.Combine(LocalRoot, "TuckPane.log");
+    internal static string DesktopRoot { get; } = TestRoot is null
+        ? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)
+        : Path.Combine(Path.GetFullPath(TestRoot), "Desktop");
 
     internal static bool IsTestMode => TestRoot is not null;
 

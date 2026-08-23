@@ -280,7 +280,7 @@ public sealed partial class MainWindow : Window
 
     private static void LocalizeContextMenu(MenuFlyout flyout)
     {
-        string[] keys = ["ContextManage", "ContextDuplicate", "ContextSwitchMode", "ContextRename", "ContextOpenStorage"];
+        string[] keys = ["ContextManage", "ContextDuplicate", "ContextSwitchMode", "ContextRename", "ContextOpenStorage", "ContextDeleteWindow"];
         FontFamily family = new(AppStrings.FontFamily);
         for (int index = 0; index < Math.Min(keys.Length, flyout.Items.Count); index++)
         {
@@ -3768,6 +3768,49 @@ public sealed partial class MainWindow : Window
     }
 
     private void OpenStorageMenuItem_Click(object sender, RoutedEventArgs e) => OpenStorageDirectory();
+
+    private async void DeleteWindowMenuItem_Click(object sender, RoutedEventArgs e) => await ShowDeleteDialogAsync();
+
+    private async Task ShowDeleteDialogAsync()
+    {
+        if (!_expanded) await ExpandAsync();
+        if (_host.TransferQueue.IsActive)
+        {
+            ShowMessage(AppStrings.Get("TransferBeforeDelete"), InfoBarSeverity.Warning);
+            return;
+        }
+
+        _desktopLayer?.SetInputActivation(true);
+        var dialog = new ContentDialog
+        {
+            XamlRoot = WindowRoot.XamlRoot,
+            Title = AppStrings.Format("DeleteTitleFormat", _definition.Name),
+            Content = FileCount > 0
+                ? AppStrings.Format("DeleteNonEmptyFormat", AppStrings.FormatItemCount(FileCount), _definition.Name)
+                : AppStrings.Get("DeleteEmpty"),
+            PrimaryButtonText = AppStrings.Get("ExportDelete"),
+            CloseButtonText = AppStrings.Get("Cancel"),
+            DefaultButton = ContentDialogButton.Close
+        };
+        try
+        {
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+            TransferOutcome outcome = await _host.DeleteOrganizerAsync(_definition.Id);
+            if (outcome.Status != TransferStatus.Moved)
+            {
+                ShowMessage(outcome.Message, InfoBarSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("无法删除收纳窗。", ex);
+            ShowMessage(ex.Message, InfoBarSeverity.Error);
+        }
+        finally
+        {
+            if (!_closing) _desktopLayer?.SetInputActivation(false);
+        }
+    }
 
     private async Task ShowRenameDialogAsync()
     {

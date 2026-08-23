@@ -56,6 +56,7 @@
   <data name="ContextSwitchMode" xml:space="preserve"><value>模式切换</value></data>
   <data name="ContextRename" xml:space="preserve"><value>重命名</value></data>
   <data name="ContextOpenStorage" xml:space="preserve"><value>打开收纳目录</value></data>
+  <data name="ContextDeleteWindow" xml:space="preserve"><value>删除窗口</value></data>
   <data name="CopyNameSuffix" xml:space="preserve"><value> - 副本</value></data>
   <data name="Collapse" xml:space="preserve"><value>收缩</value></data>
   <data name="TransparencyTitle" xml:space="preserve"><value>透明效果已降级</value></data>

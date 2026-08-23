@@ -56,6 +56,7 @@
   <data name="ContextSwitchMode" xml:space="preserve"><value>モードを切り替え</value></data>
   <data name="ContextRename" xml:space="preserve"><value>名前を変更</value></data>
   <data name="ContextOpenStorage" xml:space="preserve"><value>保存先を開く</value></data>
+  <data name="ContextDeleteWindow" xml:space="preserve"><value>ウィンドウを削除</value></data>
   <data name="CopyNameSuffix" xml:space="preserve"><value> - コピー</value></data>
   <data name="Collapse" xml:space="preserve"><value>折りたたむ</value></data>
   <data name="TransparencyTitle" xml:space="preserve"><value>透明効果を利用できません</value></data>

@@ -56,6 +56,7 @@
   <data name="ContextSwitchMode" xml:space="preserve"><value>Switch mode</value></data>
   <data name="ContextRename" xml:space="preserve"><value>Rename</value></data>
   <data name="ContextOpenStorage" xml:space="preserve"><value>Open storage folder</value></data>
+  <data name="ContextDeleteWindow" xml:space="preserve"><value>Delete window</value></data>
   <data name="CopyNameSuffix" xml:space="preserve"><value> - Copy</value></data>
   <data name="Collapse" xml:space="preserve"><value>Collapse</value></data>
   <data name="TransparencyTitle" xml:space="preserve"><value>Transparency is unavailable</value></data>
