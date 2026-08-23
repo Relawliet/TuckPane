@@ -23,7 +23,7 @@ public sealed class AppHost : IDisposable
     public ConsoleWindow Console { get; private set; } = null!;
     public IReadOnlyCollection<MainWindow> Windows => _windows.Values;
 
-    public async Task InitializeAsync(bool showConsole)
+    public async Task InitializeAsync()
     {
         AppPaths.EnsureCreated();
         State = await _stateStore.LoadAsync();
@@ -31,7 +31,6 @@ public sealed class AppHost : IDisposable
         StartupService.Apply(State.GlobalSettings.StartWithWindows);
 
         Console = new ConsoleWindow(this);
-        Console.Activate();
         Console.InitializeHostWindow();
         _tray = new TrayIconService(Console.Hwnd, () => State.GlobalSettings.StartWithWindows, () => TransferQueue.IsActive, HandleTrayCommand);
         TransferQueue.StateChanged += (_, _) => Console.UpdateTransferState();
@@ -39,7 +38,6 @@ public sealed class AppHost : IDisposable
         if (NormalizePositionedPlacementsOnStartup()) await SaveStateAsync();
         foreach (OrganizerDefinition organizer in State.Organizers) CreateWindow(organizer);
         Console.RefreshAll();
-        if (!showConsole) Console.HideToTray();
     }
 
     public GlassTheme GetTheme(OrganizerDefinition organizer) => organizer.ThemeOverride ?? State.GlobalSettings.Theme;
