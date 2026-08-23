@@ -13,11 +13,11 @@ TuckPane 是一款 Windows 11 x64 桌面文件收纳工具。它把文件和文�
 
 ## 下载
 
-当前版本：**1.0.6**。也可以前往 [Latest Release](https://github.com/ch998244353/TuckPane/releases/latest) 查看完整发布说明。
+当前版本：**1.0.7**。也可以前往 [Latest Release](https://github.com/ch998244353/TuckPane/releases/latest) 查看完整发布说明。
 
-- [TuckPane-1.0.6-win-x64-setup.exe](https://github.com/ch998244353/TuckPane/releases/download/v1.0.6/TuckPane-1.0.6-win-x64-setup.exe)：离线安装器，无需管理员权限，自动创建桌面快捷方式。
-- [TuckPane-1.0.6-win-x64-portable.zip](https://github.com/ch998244353/TuckPane/releases/download/v1.0.6/TuckPane-1.0.6-win-x64-portable.zip)：解压后双击 `00-启动 TuckPane.exe`。
-- [SHA256SUMS.txt](https://github.com/ch998244353/TuckPane/releases/download/v1.0.6/SHA256SUMS.txt)：下载文件的 SHA-256 校验值。
+- [TuckPane-1.0.7-win-x64-setup.exe](https://github.com/ch998244353/TuckPane/releases/download/v1.0.7/TuckPane-1.0.7-win-x64-setup.exe)：离线安装器，无需管理员权限，自动创建桌面快捷方式。
+- [TuckPane-1.0.7-win-x64-portable.zip](https://github.com/ch998244353/TuckPane/releases/download/v1.0.7/TuckPane-1.0.7-win-x64-portable.zip)：解压后双击 `00-启动 TuckPane.exe`。
+- [SHA256SUMS.txt](https://github.com/ch998244353/TuckPane/releases/download/v1.0.7/SHA256SUMS.txt)：下载文件的 SHA-256 校验值。
 
 两种版本均自带 .NET 与 Windows App SDK，不需要另外安装运行环境。当前安装器未进行代码签名，Windows SmartScreen 可能显示“未知发布者”；可使用同一 Release 中的 `SHA256SUMS.txt` 校验文件。
 

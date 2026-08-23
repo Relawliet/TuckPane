@@ -984,7 +984,7 @@ public sealed partial class MainWindow : Window
         _expanded = true;
         _animating = true;
         CancellationTokenSource transition = StartTransition();
-        _desktopLayer?.BringAboveDesktopPeers();
+        _desktopLayer?.SetExpanded(true);
 
         if (!NativeMethods.GetWindowRect(_hwnd, out NativeMethods.RECT currentBounds))
         {
@@ -1070,7 +1070,7 @@ public sealed partial class MainWindow : Window
                 LogCollapseHandoffError();
                 _collapseTransitionGeometry = null;
                 _animating = false;
-                _desktopLayer?.Reattach();
+                _desktopLayer?.SetExpanded(false);
                 _host.NotifyCollapsed(this);
             }
         }

@@ -139,6 +139,7 @@ internal static class NativeMethods
 
     internal static readonly IntPtr HWND_TOP = IntPtr.Zero;
     internal static readonly IntPtr HWND_BOTTOM = new(1);
+    internal static readonly IntPtr HWND_TOPMOST = new(-1);
     internal static readonly IntPtr HWND_NOTOPMOST = new(-2);
 
     [StructLayout(LayoutKind.Sequential)]

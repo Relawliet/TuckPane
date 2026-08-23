@@ -9,6 +9,7 @@ public sealed class DesktopLayerService : IDisposable
     private static readonly UIntPtr ActivationSubclassId = new(0x47464C59UL);
     private IntPtr _desktopIconView;
     private bool _allowActivation;
+    private bool _expanded;
 
     public DesktopLayerService(IntPtr window)
     {
@@ -26,6 +27,24 @@ public sealed class DesktopLayerService : IDisposable
 
     public void Reattach()
     {
+        if (_expanded)
+        {
+            if (NativeMethods.GetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT) != _originalOwner)
+            {
+                _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _originalOwner);
+            }
+
+            _ = NativeMethods.SetWindowPos(
+                _window,
+                NativeMethods.HWND_TOP,
+                0,
+                0,
+                0,
+                0,
+                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
+            return;
+        }
+
         if (_desktopIconView == IntPtr.Zero || !NativeMethods.IsWindow(_desktopIconView))
         {
             _desktopIconView = FindDesktopIconView();
@@ -44,6 +63,13 @@ public sealed class DesktopLayerService : IDisposable
             0,
             0,
             NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
+    }
+
+    public void SetExpanded(bool expanded)
+    {
+        _expanded = expanded;
+        Reattach();
+        if (expanded) RaiseAboveNormalWindows();
     }
 
     public void BringAboveDesktopPeers()
@@ -126,6 +152,15 @@ public sealed class DesktopLayerService : IDisposable
             0,
             0,
             NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_FRAMECHANGED);
+    }
+
+    private void RaiseAboveNormalWindows()
+    {
+        // HWND_TOP cannot reliably cross the foreground boundary for a no-activate window.
+        const uint flags = NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE |
+            NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW;
+        _ = NativeMethods.SetWindowPos(_window, NativeMethods.HWND_TOPMOST, 0, 0, 0, 0, flags);
+        _ = NativeMethods.SetWindowPos(_window, NativeMethods.HWND_NOTOPMOST, 0, 0, 0, 0, flags);
     }
 
     private IntPtr ActivationGuard(IntPtr hWnd, uint message, UIntPtr wParam, IntPtr lParam, UIntPtr subclassId, IntPtr referenceData)
