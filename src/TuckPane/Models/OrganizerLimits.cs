@@ -9,6 +9,7 @@ internal static class OrganizerLimits
     internal const double CompactWindowHeightDip = 68;
     internal const int MinimumGridDimension = 2;
     internal const int MaximumLayoutDimension = 6;
+    internal const int MaximumOrganizers = 50;
 
     internal static double CalculateCompactPreviewIconFraction(double itemScale)
     {

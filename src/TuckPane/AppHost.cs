@@ -1,5 +1,6 @@
 using TuckPane.Models;
 using TuckPane.Services;
+using TuckPane.Core;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
@@ -45,7 +46,7 @@ public sealed class AppHost : IDisposable
 
     public async Task<OrganizerDefinition> CreateOrganizerAsync(OrganizerDefinition draft, string? storageParentPath = null)
     {
-        if (State.Organizers.Count >= 12) throw new InvalidOperationException(AppStrings.Get("MaximumOrganizersError"));
+        if (State.Organizers.Count >= OrganizerLimits.MaximumOrganizers) throw new InvalidOperationException(AppStrings.Get("MaximumOrganizersError"));
         Guid id = Guid.NewGuid();
         draft.Id = id;
         draft.Name = string.IsNullOrWhiteSpace(draft.Name) ? AppStrings.DefaultOrganizerName : draft.Name.Trim();
@@ -101,20 +102,70 @@ public sealed class AppHost : IDisposable
         }
     }
 
+    public Task<OrganizerDefinition> DuplicateOrganizerAsync(Guid id)
+    {
+        OrganizerDefinition source = State.Organizers.First(item => item.Id == id);
+        string name = OrganizerInteractionMath.CreateCopyName(
+            source.Name,
+            State.Organizers.Select(item => item.Name),
+            AppStrings.Get("CopyNameSuffix"));
+        var draft = OrganizerInteractionMath.CopySettings(source, name);
+        string itemsPath = AppPaths.ResolveStoragePath(source);
+        string? container = AppPaths.GetOwnedStorageContainer(source);
+        string? storageParent = Path.GetDirectoryName(container ?? itemsPath);
+        return CreateOrganizerAsync(draft, storageParent);
+    }
+
+    public async Task<string?> ToggleOrganizerModeAsync(Guid id)
+    {
+        OrganizerDefinition current = State.Organizers.First(item => item.Id == id);
+        if (_windows.TryGetValue(id, out MainWindow? window) && window.IsExpanded)
+        {
+            await window.CollapseForPeerAsync();
+        }
+
+        OrganizerDefinition edited = OrganizerInteractionMath.CopySettings(current, current.Name);
+        edited.Id = current.Id;
+        edited.PlacementMode = current.PlacementMode == OrganizerPlacementMode.Floating
+            ? OrganizerPlacementMode.Positioned
+            : OrganizerPlacementMode.Floating;
+        if (edited.PlacementMode == OrganizerPlacementMode.Positioned)
+        {
+            edited.CompactScale = OrganizerLimits.PositionedCompactScale;
+        }
+
+        string? error = ApplyOrganizerRuntime(
+            edited,
+            OrganizerVisualChange.PlacementMode | OrganizerVisualChange.CompactScale);
+        if (error is not null) return error;
+        await SaveStateAsync();
+        Console.RefreshAll(id);
+        return null;
+    }
+
     internal string? ApplyOrganizerRuntime(OrganizerDefinition edited, OrganizerVisualChange changes)
     {
         OrganizerDefinition current = State.Organizers.First(item => item.Id == edited.Id);
+        bool layoutChanged = current.Layout.Mode != edited.Layout.Mode ||
+            current.Layout.Rows != edited.Layout.Rows ||
+            current.Layout.Columns != edited.Layout.Columns;
         OrganizerPlacementMode previousMode = current.PlacementMode;
         double previousCompactScale = current.CompactScale;
         WidgetPosition? previousPosition = current.Position;
         current.Name = string.IsNullOrWhiteSpace(edited.Name) ? current.Name : edited.Name.Trim();
         current.ThemeOverride = edited.ThemeOverride;
         current.PlacementMode = edited.PlacementMode;
+        current.PositionLocked = edited.PositionLocked;
         current.Layout = new OrganizerLayout { Mode = edited.Layout.Mode, Rows = edited.Layout.Rows, Columns = edited.Layout.Columns };
         current.CompactScale = edited.CompactScale;
         current.CanvasScale = edited.CanvasScale;
         current.ItemScale = edited.ItemScale;
         current.NameScale = edited.NameScale;
+        if (layoutChanged)
+        {
+            current.ManualCanvasBaseWidthDip = null;
+            current.ManualCanvasBaseHeightDip = null;
+        }
         StateStore.Normalize(State);
         if (_windows.TryGetValue(current.Id, out MainWindow? window))
         {
@@ -146,6 +197,23 @@ public sealed class AppHost : IDisposable
             {
                 current.Position = window.AdoptExpandedCenterForFloating() ?? current.Position;
             }
+            else if (current.PlacementMode == OrganizerPlacementMode.Positioned &&
+                (changes & OrganizerVisualChange.PositionLock) != 0 && !current.PositionLocked)
+            {
+                NativeMethods.RECT currentBounds = window.CompactBounds;
+                var center = new NativeMethods.POINT
+                {
+                    X = currentBounds.Left + currentBounds.Width / 2,
+                    Y = currentBounds.Top + currentBounds.Height / 2
+                };
+                DisplayInfo display = DisplayPlacementService.ForBounds(currentBounds);
+                DesktopGridPlacement? placement = FindPositionedPlacement(display, center, current.Id);
+                if (placement is not null)
+                {
+                    current.Position = DisplayPlacementService.Capture(placement.Bounds);
+                    window.MoveToPositionedPlacement(placement.Bounds, placement.CompactScale);
+                }
+            }
         }
         return null;
     }
@@ -170,6 +238,20 @@ public sealed class AppHost : IDisposable
             Y = currentBounds.Top + currentBounds.Height / 2
         };
         return FindPositionedPlacement(display, center, organizerId);
+    }
+
+    internal DesktopGridPlacement? RestoreLockedPositionedBounds(Guid organizerId)
+    {
+        OrganizerDefinition organizer = State.Organizers.First(item => item.Id == organizerId);
+        DisplayInfo display = DisplayPlacementService.GetDisplays()
+            .FirstOrDefault(item => string.Equals(item.Device, organizer.Position?.MonitorDevice, StringComparison.OrdinalIgnoreCase))
+            ?? DisplayPlacementService.GetDisplays().FirstOrDefault(item => item.Monitor.Left == 0 && item.Monitor.Top == 0)
+            ?? DisplayPlacementService.GetDisplays().First();
+        DesktopGridSnapshot snapshot = ReadGridSnapshot(display);
+        double scale = DesktopGridService.CalculatePositionedCompactScale(snapshot);
+        (int width, int height, _) = DesktopGridService.CalculatePositionedWindowSize(snapshot, scale);
+        NativeMethods.RECT bounds = DisplayPlacementService.RestoreToDisplay(organizer.Position, display, width, height);
+        return new DesktopGridPlacement(bounds, scale, snapshot.ExplorerPositionsAvailable);
     }
 
     public async Task<TransferOutcome> DeleteOrganizerAsync(Guid id)
@@ -312,6 +394,15 @@ public sealed class AppHost : IDisposable
         foreach (OrganizerDefinition organizer in State.Organizers.Where(item => item.PlacementMode == OrganizerPlacementMode.Positioned))
         {
             DisplayInfo display = displays.FirstOrDefault(item => string.Equals(item.Device, organizer.Position?.MonitorDevice, StringComparison.OrdinalIgnoreCase)) ?? primary;
+            if (organizer.PositionLocked)
+            {
+                DesktopGridSnapshot lockedSnapshot = ReadGridSnapshot(display);
+                double lockedScale = DesktopGridService.CalculatePositionedCompactScale(lockedSnapshot);
+                (int lockedWidth, int lockedHeight, _) = DesktopGridService.CalculatePositionedWindowSize(lockedSnapshot, lockedScale);
+                NativeMethods.RECT locked = DisplayPlacementService.RestoreToDisplay(organizer.Position, display, lockedWidth, lockedHeight);
+                occupied.Add(locked);
+                continue;
+            }
             DesktopGridSnapshot snapshot = ReadGridSnapshot(display);
             double scale = DesktopGridService.CalculatePositionedCompactScale(snapshot);
             (int width, int height, _) = DesktopGridService.CalculatePositionedWindowSize(snapshot, scale);

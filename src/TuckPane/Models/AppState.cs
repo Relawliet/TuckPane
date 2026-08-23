@@ -44,7 +44,8 @@ internal enum OrganizerVisualChange
     ItemScale = 1 << 5,
     NameScale = 1 << 6,
     PlacementMode = 1 << 7,
-    All = Name | Theme | Layout | CompactScale | CanvasScale | ItemScale | NameScale | PlacementMode
+    PositionLock = 1 << 8,
+    All = Name | Theme | Layout | CompactScale | CanvasScale | ItemScale | NameScale | PlacementMode | PositionLock
 }
 
 public sealed class AppStateV2
@@ -78,11 +79,14 @@ public sealed class OrganizerDefinition
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
     public GlassTheme? ThemeOverride { get; set; }
     public OrganizerPlacementMode PlacementMode { get; set; } = OrganizerPlacementMode.Floating;
+    public bool PositionLocked { get; set; }
     public OrganizerLayout Layout { get; set; } = new();
     public double CompactScale { get; set; } = OrganizerLimits.MinimumCompactScale;
     public double CanvasScale { get; set; } = 1;
     public double ItemScale { get; set; } = 1;
     public double NameScale { get; set; } = 1;
+    public double? ManualCanvasBaseWidthDip { get; set; }
+    public double? ManualCanvasBaseHeightDip { get; set; }
     public WidgetPosition? Position { get; set; }
     public string StorageRelativePath { get; set; } = string.Empty;
     public string? StorageAbsolutePath { get; set; }

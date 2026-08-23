@@ -262,7 +262,7 @@ public sealed partial class MainWindow : Window
 
     private static void LocalizeContextMenu(MenuFlyout flyout)
     {
-        string[] keys = ["ContextManage", "ContextRename", "ContextOpenStorage"];
+        string[] keys = ["ContextManage", "ContextDuplicate", "ContextSwitchMode", "ContextRename", "ContextOpenStorage", "ContextDeleteWindow"];
         FontFamily family = new(AppStrings.FontFamily);
         for (int index = 0; index < Math.Min(keys.Length, flyout.Items.Count); index++)
         {
@@ -329,12 +329,23 @@ public sealed partial class MainWindow : Window
             _definition.Position,
             DipToPx(GetCompactWidthDip(), display.Scale),
             DipToPx(GetCompactHeightDip(), display.Scale));
-        if (_definition.PlacementMode == OrganizerPlacementMode.Positioned &&
-            _host.FindCurrentPositionedPlacement(_definition.Id, _compactBounds) is { } positionedPlacement)
+        if (_definition.PlacementMode == OrganizerPlacementMode.Positioned)
         {
-            MoveToPositionedPlacement(positionedPlacement.Bounds, positionedPlacement.CompactScale);
-            _definition.Position = DisplayPlacementService.Capture(_compactBounds);
-            normalizedVisualScales = true;
+            if (_definition.PositionLocked)
+            {
+                DesktopGridPlacement? locked = _host.RestoreLockedPositionedBounds(_definition.Id);
+                if (locked is not null)
+                {
+                    MoveToPositionedPlacement(locked.Bounds, locked.CompactScale);
+                    normalizedVisualScales = true;
+                }
+            }
+            else if (_host.FindCurrentPositionedPlacement(_definition.Id, _compactBounds) is { } positionedPlacement)
+            {
+                MoveToPositionedPlacement(positionedPlacement.Bounds, positionedPlacement.CompactScale);
+                _definition.Position = DisplayPlacementService.Capture(_compactBounds);
+                normalizedVisualScales = true;
+            }
         }
         AppLogger.Info($"初始化 DPI={display.Scale:0.##}，收起窗口={_compactBounds.Width}x{_compactBounds.Height}px。");
         ApplyBounds(_compactBounds, show: true);
@@ -963,7 +974,7 @@ public sealed partial class MainWindow : Window
         _expanded = true;
         _animating = true;
         CancellationTokenSource transition = StartTransition();
-        _desktopLayer?.BringAboveDesktopPeers();
+        _desktopLayer?.SetExpanded(true);
 
         if (!NativeMethods.GetWindowRect(_hwnd, out NativeMethods.RECT currentBounds))
         {
@@ -1045,7 +1056,7 @@ public sealed partial class MainWindow : Window
                 _collapseTransitionGeometry = null;
                 _animating = false;
                 _outsideClickHook?.Stop();
-                _desktopLayer?.Reattach();
+                _desktopLayer?.SetExpanded(false);
                 _host.NotifyCollapsed(this);
             }
         }
@@ -1749,12 +1760,9 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void Item_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    private void TryOpenItem(string relativeName)
     {
-        if (_shellDropFinalizing || sender is not FrameworkElement { Tag: string relativeName } || _draggedRelativeName is not null)
-        {
-            return;
-        }
+        if (_shellDropFinalizing || _draggedRelativeName is not null) return;
         WidgetItem? item = _items.FirstOrDefault(candidate => candidate.RelativeName.Equals(relativeName, StringComparison.OrdinalIgnoreCase));
         if (item is null) return;
 
@@ -1865,7 +1873,9 @@ public sealed partial class MainWindow : Window
         }
         else if (!session.IsNativeDragging)
         {
+            string relativeName = session.RelativeName;
             CancelItemReorder();
+            TryOpenItem(relativeName);
         }
         else e.Handled = true;
     }
@@ -3197,6 +3207,76 @@ public sealed partial class MainWindow : Window
 
     private void OpenStorageMenuItem_Click(object sender, RoutedEventArgs e) => OpenStorageDirectory();
 
+    private async void DuplicateWindowMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await _host.DuplicateOrganizerAsync(_definition.Id);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("无法复制收纳窗。", ex);
+            ShowMessage(ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    private async void ToggleModeMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string? error = await _host.ToggleOrganizerModeAsync(_definition.Id);
+            if (error is not null) ShowMessage(error, InfoBarSeverity.Warning);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("无法切换收纳窗模式。", ex);
+            ShowMessage(ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    private async void DeleteWindowMenuItem_Click(object sender, RoutedEventArgs e) => await ShowDeleteDialogAsync();
+
+    private async Task ShowDeleteDialogAsync()
+    {
+        if (!_expanded) await ExpandAsync();
+        if (_host.TransferQueue.IsActive)
+        {
+            ShowMessage(AppStrings.Get("TransferBeforeDelete"), InfoBarSeverity.Warning);
+            return;
+        }
+
+        _desktopLayer?.SetInputActivation(true);
+        var dialog = new ContentDialog
+        {
+            XamlRoot = WindowRoot.XamlRoot,
+            Title = AppStrings.Format("DeleteTitleFormat", _definition.Name),
+            Content = FileCount > 0
+                ? AppStrings.Format("DeleteNonEmptyFormat", AppStrings.FormatItemCount(FileCount), _definition.Name)
+                : AppStrings.Get("DeleteEmpty"),
+            PrimaryButtonText = AppStrings.Get("ExportDelete"),
+            CloseButtonText = AppStrings.Get("Cancel"),
+            DefaultButton = ContentDialogButton.Close
+        };
+        try
+        {
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
+            TransferOutcome outcome = await _host.DeleteOrganizerAsync(_definition.Id);
+            if (outcome.Status != TransferStatus.Moved)
+            {
+                ShowMessage(outcome.Message, InfoBarSeverity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("无法删除收纳窗。", ex);
+            ShowMessage(ex.Message, InfoBarSeverity.Error);
+        }
+        finally
+        {
+            if (!_closing) _desktopLayer?.SetInputActivation(false);
+        }
+    }
+
     private async Task ShowRenameDialogAsync()
     {
         if (!_expanded)
@@ -3260,12 +3340,26 @@ public sealed partial class MainWindow : Window
         {
             if (_definition.PlacementMode == OrganizerPlacementMode.Positioned)
             {
-                DesktopGridPlacement? placement = _host.FindCurrentPositionedPlacement(_definition.Id, _compactBounds);
-                if (placement is not null && !RectsEqual(placement.Bounds, _compactBounds))
+                if (_definition.PositionLocked)
                 {
-                    MoveToPositionedPlacement(placement.Bounds, placement.CompactScale);
-                    _definition.Position = DisplayPlacementService.Capture(_compactBounds, _hwnd);
-                    _ = SaveStateAsync();
+                    NativeMethods.RECT locked = DisplayPlacementService.Clamp(_compactBounds, DisplayPlacementService.ForBounds(_compactBounds).Work);
+                    if (!RectsEqual(locked, _compactBounds))
+                    {
+                        _compactBounds = locked;
+                        ApplyBounds(_compactBounds, show: true);
+                        _definition.Position = DisplayPlacementService.Capture(_compactBounds, _hwnd);
+                        _ = SaveStateAsync();
+                    }
+                }
+                else
+                {
+                    DesktopGridPlacement? placement = _host.FindCurrentPositionedPlacement(_definition.Id, _compactBounds);
+                    if (placement is not null && !RectsEqual(placement.Bounds, _compactBounds))
+                    {
+                        MoveToPositionedPlacement(placement.Bounds, placement.CompactScale);
+                        _definition.Position = DisplayPlacementService.Capture(_compactBounds, _hwnd);
+                        _ = SaveStateAsync();
+                    }
                 }
             }
             else

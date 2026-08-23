@@ -117,8 +117,8 @@ public sealed partial class ConsoleWindow : Window
     {
         UpdateThemeCards(_host.State.GlobalSettings.Theme);
         UpdateStartupToggle();
-        CreateOrganizerButton.IsEnabled = _host.State.Organizers.Count < 12;
-        CreateLimitText.Visibility = _host.State.Organizers.Count >= 12 ? Visibility.Visible : Visibility.Collapsed;
+        CreateOrganizerButton.IsEnabled = _host.State.Organizers.Count < OrganizerLimits.MaximumOrganizers;
+        CreateLimitText.Visibility = _host.State.Organizers.Count >= OrganizerLimits.MaximumOrganizers ? Visibility.Visible : Visibility.Collapsed;
         PopulateManageList(selectId ?? _selectedId);
         UpdateTransferState();
         UpdateAddControls();
@@ -798,6 +798,7 @@ public sealed partial class ConsoleWindow : Window
         _loadingEditor = true;
         ManageNameBox.Text = source.Name;
         ManagePlacementModeCombo.SelectedIndex = (int)source.PlacementMode;
+        ManagePositionLockToggle.IsOn = source.PositionLocked;
         ManageRowsSlider.Value = source.Layout.Rows;
         ManageColumnsSlider.Value = source.Layout.Columns;
         ManageThemeCombo.SelectedIndex = ComboFromTheme(source.ThemeOverride);
@@ -830,6 +831,7 @@ public sealed partial class ConsoleWindow : Window
         if (ManageRowsCard is null || _adjustingManageControls) return;
         _adjustingManageControls = true;
         bool positioned = ManagePlacementModeCombo.SelectedIndex == (int)OrganizerPlacementMode.Positioned;
+        ManagePositionLockCard.Visibility = positioned ? Visibility.Visible : Visibility.Collapsed;
         ManageCompactScaleCard.Visibility = positioned ? Visibility.Collapsed : Visibility.Visible;
         if (positioned) ManageCompactScaleSlider.Value = OrganizerLimits.PositionedCompactScale;
         (int rows, int columns) = ReadGridDimensions(ManageRowsSlider, ManageColumnsSlider);
@@ -854,6 +856,7 @@ public sealed partial class ConsoleWindow : Window
         _editing.PlacementMode = ManagePlacementModeCombo.SelectedIndex == (int)OrganizerPlacementMode.Positioned
             ? OrganizerPlacementMode.Positioned
             : OrganizerPlacementMode.Floating;
+        _editing.PositionLocked = ManagePositionLockToggle.IsOn;
         _editing.Layout.Mode = OrganizerLayoutMode.Grid;
         (_editing.Layout.Rows, _editing.Layout.Columns) = ReadGridDimensions(ManageRowsSlider, ManageColumnsSlider);
         _editing.ThemeOverride = ThemeFromCombo(ManageThemeCombo.SelectedIndex);
@@ -960,6 +963,7 @@ public sealed partial class ConsoleWindow : Window
     {
         if (ReferenceEquals(sender, ManageNameBox)) return OrganizerVisualChange.Name;
         if (ReferenceEquals(sender, ManagePlacementModeCombo)) return OrganizerVisualChange.PlacementMode | OrganizerVisualChange.CompactScale;
+        if (ReferenceEquals(sender, ManagePositionLockToggle)) return OrganizerVisualChange.PositionLock;
         if (ReferenceEquals(sender, ManageThemeCombo)) return OrganizerVisualChange.Theme;
         if (ReferenceEquals(sender, ManageCompactScaleSlider)) return OrganizerVisualChange.CompactScale;
         if (ReferenceEquals(sender, ManageCanvasScaleSlider)) return OrganizerVisualChange.CanvasScale | OrganizerVisualChange.ItemScale;
@@ -1003,6 +1007,7 @@ public sealed partial class ConsoleWindow : Window
         CreatedAtUtc = source.CreatedAtUtc,
         ThemeOverride = source.ThemeOverride,
         PlacementMode = source.PlacementMode,
+        PositionLocked = source.PositionLocked,
         Layout = new OrganizerLayout { Mode = source.Layout.Mode, Rows = source.Layout.Rows, Columns = source.Layout.Columns },
         CompactScale = source.CompactScale,
         CanvasScale = source.CanvasScale,

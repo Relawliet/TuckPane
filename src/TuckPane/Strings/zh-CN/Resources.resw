@@ -25,6 +25,7 @@
   <data name="AddTitle" xml:space="preserve"><value>添加收纳窗</value></data>
   <data name="NameLabel" xml:space="preserve"><value>名称</value></data>
   <data name="ModeLabel" xml:space="preserve"><value>模式</value></data>
+  <data name="PositionLockLabel" xml:space="preserve"><value>锁定位置</value></data>
   <data name="ModeFloating" xml:space="preserve"><value>悬浮窗模式</value></data>
   <data name="ModePositioned" xml:space="preserve"><value>定位模式</value></data>
   <data name="RowsLabel" xml:space="preserve"><value>行数</value></data>
@@ -36,7 +37,7 @@
   <data name="ItemScaleLabel" xml:space="preserve"><value>内容比例</value></data>
   <data name="NameScaleLabel" xml:space="preserve"><value>昵称大小</value></data>
   <data name="CreateOrganizer" xml:space="preserve"><value>创建收纳窗</value></data>
-  <data name="OrganizerLimit" xml:space="preserve"><value>已达到 12 个收纳窗上限。</value></data>
+  <data name="OrganizerLimit" xml:space="preserve"><value>已达到 50 个收纳窗上限。</value></data>
   <data name="ManageTitle" xml:space="preserve"><value>管理</value></data>
   <data name="ManageEmpty" xml:space="preserve"><value>还没有收纳窗</value></data>
   <data name="Create" xml:space="preserve"><value>创建</value></data>
@@ -54,6 +55,10 @@
   <data name="ContextManage" xml:space="preserve"><value>设置</value></data>
   <data name="ContextRename" xml:space="preserve"><value>重命名</value></data>
   <data name="ContextOpenStorage" xml:space="preserve"><value>打开收纳目录</value></data>
+  <data name="ContextDeleteWindow" xml:space="preserve"><value>删除窗口</value></data>
+  <data name="ContextDuplicate" xml:space="preserve"><value>窗口复制</value></data>
+  <data name="ContextSwitchMode" xml:space="preserve"><value>模式切换</value></data>
+  <data name="CopyNameSuffix" xml:space="preserve"><value> - 副本</value></data>
   <data name="Collapse" xml:space="preserve"><value>收缩</value></data>
   <data name="TransparencyTitle" xml:space="preserve"><value>透明效果已降级</value></data>
   <data name="TransparencyMessage" xml:space="preserve"><value>Windows 当前不提供实时毛玻璃，TuckPane 已使用匹配主题的纯色背景。</value></data>
@@ -71,7 +76,7 @@
   <data name="DeleteErrorTitle" xml:space="preserve"><value>无法删除收纳窗</value></data>
   <data name="OpenFolderErrorTitle" xml:space="preserve"><value>无法打开文件夹</value></data>
   <data name="MissingStorageMessage" xml:space="preserve"><value>实际目录不存在，请先使用“重建目录”。</value></data>
-  <data name="MaximumOrganizersError" xml:space="preserve"><value>最多只能创建 12 个收纳窗。</value></data>
+  <data name="MaximumOrganizersError" xml:space="preserve"><value>最多只能创建 50 个收纳窗。</value></data>
   <data name="NoPrimaryGridError" xml:space="preserve"><value>主显示器没有可用的桌面网格位置，未创建收纳窗。</value></data>
   <data name="PositionedRollbackError" xml:space="preserve"><value>当前显示器没有可用的桌面网格位置，已恢复悬浮窗模式。</value></data>
   <data name="TransferBeforeDelete" xml:space="preserve"><value>文件传输完成后才能删除窗口。</value></data>

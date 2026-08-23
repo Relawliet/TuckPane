@@ -115,6 +115,7 @@ internal static class NativeMethods
 
     internal static readonly IntPtr HWND_TOP = IntPtr.Zero;
     internal static readonly IntPtr HWND_BOTTOM = new(1);
+    internal static readonly IntPtr HWND_TOPMOST = new(-1);
     internal static readonly IntPtr HWND_NOTOPMOST = new(-2);
 
     [StructLayout(LayoutKind.Sequential)]
@@ -239,6 +240,16 @@ internal static class NativeMethods
     {
         public BITMAPINFOHEADER Header;
         public uint Colors;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct ICONINFO
+    {
+        public bool fIcon;
+        public uint xHotspot;
+        public uint yHotspot;
+        public IntPtr hbmMask;
+        public IntPtr hbmColor;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -542,4 +553,13 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool DrawIconEx(IntPtr hdc, int x, int y, IntPtr icon, int width, int height, uint step, IntPtr brush, uint flags);
+
+    [DllImport("user32.dll")]
+    internal static extern bool GetIconInfo(IntPtr hIcon, out ICONINFO iconInfo);
+
+    [DllImport("gdi32.dll")]
+    internal static extern int GetDIBits(IntPtr hdc, IntPtr hbm, uint start, uint cLines, byte[]? lpvBits, ref BITMAPINFO lpbmi, uint usage);
+
+    [DllImport("gdi32.dll", EntryPoint = "GetDIBits")]
+    internal static extern int GetDIBitsBuffer(IntPtr hdc, IntPtr hbm, uint start, uint cLines, byte[]? lpvBits, IntPtr lpbmi, uint usage);
 }

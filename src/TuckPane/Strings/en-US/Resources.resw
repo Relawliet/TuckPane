@@ -25,6 +25,7 @@
   <data name="AddTitle" xml:space="preserve"><value>Add organizer</value></data>
   <data name="NameLabel" xml:space="preserve"><value>Name</value></data>
   <data name="ModeLabel" xml:space="preserve"><value>Mode</value></data>
+  <data name="PositionLockLabel" xml:space="preserve"><value>Lock position</value></data>
   <data name="ModeFloating" xml:space="preserve"><value>Floating mode</value></data>
   <data name="ModePositioned" xml:space="preserve"><value>Positioned mode</value></data>
   <data name="RowsLabel" xml:space="preserve"><value>Rows</value></data>
@@ -36,7 +37,7 @@
   <data name="ItemScaleLabel" xml:space="preserve"><value>Content scale</value></data>
   <data name="NameScaleLabel" xml:space="preserve"><value>Label size</value></data>
   <data name="CreateOrganizer" xml:space="preserve"><value>Create organizer</value></data>
-  <data name="OrganizerLimit" xml:space="preserve"><value>The 12-organizer limit has been reached.</value></data>
+  <data name="OrganizerLimit" xml:space="preserve"><value>The 50-organizer limit has been reached.</value></data>
   <data name="ManageTitle" xml:space="preserve"><value>Manage</value></data>
   <data name="ManageEmpty" xml:space="preserve"><value>No organizers yet</value></data>
   <data name="Create" xml:space="preserve"><value>Create</value></data>
@@ -54,6 +55,10 @@
   <data name="ContextManage" xml:space="preserve"><value>Settings</value></data>
   <data name="ContextRename" xml:space="preserve"><value>Rename</value></data>
   <data name="ContextOpenStorage" xml:space="preserve"><value>Open storage folder</value></data>
+  <data name="ContextDeleteWindow" xml:space="preserve"><value>Delete window</value></data>
+  <data name="ContextDuplicate" xml:space="preserve"><value>Duplicate window</value></data>
+  <data name="ContextSwitchMode" xml:space="preserve"><value>Switch mode</value></data>
+  <data name="CopyNameSuffix" xml:space="preserve"><value> - Copy</value></data>
   <data name="Collapse" xml:space="preserve"><value>Collapse</value></data>
   <data name="TransparencyTitle" xml:space="preserve"><value>Transparency is unavailable</value></data>
   <data name="TransparencyMessage" xml:space="preserve"><value>Windows cannot provide live acrylic right now. TuckPane is using the matching solid fallback.</value></data>
@@ -71,7 +76,7 @@
   <data name="DeleteErrorTitle" xml:space="preserve"><value>Could not delete organizer</value></data>
   <data name="OpenFolderErrorTitle" xml:space="preserve"><value>Could not open folder</value></data>
   <data name="MissingStorageMessage" xml:space="preserve"><value>The storage folder is missing. Recreate it first.</value></data>
-  <data name="MaximumOrganizersError" xml:space="preserve"><value>You can create up to 12 organizers.</value></data>
+  <data name="MaximumOrganizersError" xml:space="preserve"><value>You can create up to 50 organizers.</value></data>
   <data name="NoPrimaryGridError" xml:space="preserve"><value>No desktop grid position is available on the primary display. The organizer was not created.</value></data>
   <data name="PositionedRollbackError" xml:space="preserve"><value>No desktop grid position is available on this display. Floating mode was restored.</value></data>
   <data name="TransferBeforeDelete" xml:space="preserve"><value>Wait for the file transfer to finish before deleting the organizer.</value></data>

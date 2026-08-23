@@ -25,6 +25,7 @@
   <data name="AddTitle" xml:space="preserve"><value>収納ウィンドウを追加</value></data>
   <data name="NameLabel" xml:space="preserve"><value>名前</value></data>
   <data name="ModeLabel" xml:space="preserve"><value>モード</value></data>
+  <data name="PositionLockLabel" xml:space="preserve"><value>位置を固定</value></data>
   <data name="ModeFloating" xml:space="preserve"><value>フローティング</value></data>
   <data name="ModePositioned" xml:space="preserve"><value>配置モード</value></data>
   <data name="RowsLabel" xml:space="preserve"><value>行数</value></data>
@@ -36,7 +37,7 @@
   <data name="ItemScaleLabel" xml:space="preserve"><value>内容の比率</value></data>
   <data name="NameScaleLabel" xml:space="preserve"><value>名前のサイズ</value></data>
   <data name="CreateOrganizer" xml:space="preserve"><value>収納ウィンドウを作成</value></data>
-  <data name="OrganizerLimit" xml:space="preserve"><value>収納ウィンドウは最大 12 個です。</value></data>
+  <data name="OrganizerLimit" xml:space="preserve"><value>収納ウィンドウは最大 50 個です。</value></data>
   <data name="ManageTitle" xml:space="preserve"><value>管理</value></data>
   <data name="ManageEmpty" xml:space="preserve"><value>収納ウィンドウはありません</value></data>
   <data name="Create" xml:space="preserve"><value>作成</value></data>
@@ -54,6 +55,10 @@
   <data name="ContextManage" xml:space="preserve"><value>設定</value></data>
   <data name="ContextRename" xml:space="preserve"><value>名前を変更</value></data>
   <data name="ContextOpenStorage" xml:space="preserve"><value>保存先を開く</value></data>
+  <data name="ContextDeleteWindow" xml:space="preserve"><value>ウィンドウを削除</value></data>
+  <data name="ContextDuplicate" xml:space="preserve"><value>ウィンドウを複製</value></data>
+  <data name="ContextSwitchMode" xml:space="preserve"><value>モードを切り替え</value></data>
+  <data name="CopyNameSuffix" xml:space="preserve"><value> - コピー</value></data>
   <data name="Collapse" xml:space="preserve"><value>折りたたむ</value></data>
   <data name="TransparencyTitle" xml:space="preserve"><value>透明効果を利用できません</value></data>
   <data name="TransparencyMessage" xml:space="preserve"><value>Windows のリアルタイムアクリルを利用できないため、対応する単色背景を使用しています。</value></data>
@@ -71,7 +76,7 @@
   <data name="DeleteErrorTitle" xml:space="preserve"><value>収納ウィンドウを削除できません</value></data>
   <data name="OpenFolderErrorTitle" xml:space="preserve"><value>フォルダーを開けません</value></data>
   <data name="MissingStorageMessage" xml:space="preserve"><value>保存先がありません。先にフォルダーを再作成してください。</value></data>
-  <data name="MaximumOrganizersError" xml:space="preserve"><value>収納ウィンドウは最大 12 個まで作成できます。</value></data>
+  <data name="MaximumOrganizersError" xml:space="preserve"><value>収納ウィンドウは最大 50 個まで作成できます。</value></data>
   <data name="NoPrimaryGridError" xml:space="preserve"><value>メインディスプレイに空きグリッドがないため、作成しませんでした。</value></data>
   <data name="PositionedRollbackError" xml:space="preserve"><value>このディスプレイに空きグリッドがないため、フローティングへ戻しました。</value></data>
   <data name="TransferBeforeDelete" xml:space="preserve"><value>ファイル転送が完了してから削除してください。</value></data>
