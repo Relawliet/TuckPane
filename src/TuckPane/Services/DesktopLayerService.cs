@@ -4,17 +4,17 @@ public sealed class DesktopLayerService : IDisposable
 {
     private const uint SpawnWorkerMessage = 0x052C;
     private readonly IntPtr _window;
-    private readonly IntPtr _originalOwner;
+    private readonly IntPtr _expandedOwner;
     private readonly NativeMethods.SubclassProc _activationGuard;
     private static readonly UIntPtr ActivationSubclassId = new(0x47464C59UL);
     private IntPtr _desktopIconView;
     private bool _allowActivation;
     private bool _expanded;
 
-    public DesktopLayerService(IntPtr window)
+    public DesktopLayerService(IntPtr window, IntPtr expandedOwner)
     {
         _window = window;
-        _originalOwner = NativeMethods.GetWindowLongPtr(window, NativeMethods.GWLP_HWNDPARENT);
+        _expandedOwner = expandedOwner;
         _activationGuard = ActivationGuard;
         ApplyToolWindowStyle();
         _ = NativeMethods.SetWindowSubclass(_window, _activationGuard, ActivationSubclassId, IntPtr.Zero);
@@ -29,9 +29,9 @@ public sealed class DesktopLayerService : IDisposable
     {
         if (_expanded)
         {
-            if (NativeMethods.GetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT) != _originalOwner)
+            if (NativeMethods.GetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT) != _expandedOwner)
             {
-                _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _originalOwner);
+                _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _expandedOwner);
             }
 
             _ = NativeMethods.SetWindowPos(
@@ -102,7 +102,7 @@ public sealed class DesktopLayerService : IDisposable
 
         if (enabled)
         {
-            _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _originalOwner);
+            _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _expandedOwner);
             _ = NativeMethods.SetWindowPos(
                 _window,
                 NativeMethods.HWND_TOP,
@@ -124,7 +124,7 @@ public sealed class DesktopLayerService : IDisposable
         if (NativeMethods.IsWindow(_window))
         {
             _ = NativeMethods.RemoveWindowSubclass(_window, _activationGuard, ActivationSubclassId);
-            _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _originalOwner);
+            _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _expandedOwner);
         }
     }
 

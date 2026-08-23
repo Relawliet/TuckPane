@@ -429,6 +429,7 @@ public sealed class AppHost : IDisposable
     private void CreateWindow(OrganizerDefinition organizer)
     {
         var window = new MainWindow(this, organizer);
+        window.InitializeHostWindow();
         _windows.Add(organizer.Id, window);
         window.Activate();
     }

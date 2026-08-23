@@ -71,6 +71,7 @@ public sealed partial class MainWindow : Window
     private readonly ObservableCollection<WidgetItem> _items = [];
     private IntPtr _hwnd;
     private AppWindow? _appWindow;
+    private bool _hostWindowInitialized;
     private readonly List<IntPtr> _canvasResizeEdgeWindows = [];
     private readonly Dictionary<IntPtr, IntPtr> _canvasResizeOriginalWindowProcs = [];
     private DesktopLayerService? _desktopLayer;
@@ -305,19 +306,13 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async Task InitializeAsync()
+    internal void InitializeHostWindow()
     {
-        AppPaths.EnsureCreated();
+        if (_hostWindowInitialized) return;
+        _hostWindowInitialized = true;
         _hwnd = WindowNative.GetWindowHandle(this);
-        int useHostBackdrop = 1;
-        _ = NativeMethods.DwmSetWindowAttribute(
-            _hwnd,
-            NativeMethods.DWMWA_USE_HOSTBACKDROPBRUSH,
-            ref useHostBackdrop,
-            sizeof(int));
         WindowId windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
-        _ = NativeMethods.SetWindowSubclass(_hwnd, _gestureWindowProc, GestureSubclassId, IntPtr.Zero);
         if (_appWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.SetBorderAndTitleBar(false, false);
@@ -325,6 +320,22 @@ public sealed partial class MainWindow : Window
             presenter.IsMaximizable = false;
             presenter.IsMinimizable = false;
         }
+        IntPtr desktopIconView = DesktopLayerService.FindDesktopIconView();
+        IntPtr initialOwner = desktopIconView != IntPtr.Zero ? desktopIconView : _host.Console.Hwnd;
+        _ = NativeMethods.SetWindowLongPtr(_hwnd, NativeMethods.GWLP_HWNDPARENT, initialOwner);
+    }
+
+    private async Task InitializeAsync()
+    {
+        AppPaths.EnsureCreated();
+        InitializeHostWindow();
+        int useHostBackdrop = 1;
+        _ = NativeMethods.DwmSetWindowAttribute(
+            _hwnd,
+            NativeMethods.DWMWA_USE_HOSTBACKDROPBRUSH,
+            ref useHostBackdrop,
+            sizeof(int));
+        _ = NativeMethods.SetWindowSubclass(_hwnd, _gestureWindowProc, GestureSubclassId, IntPtr.Zero);
 
         await WaitForLoadedAsync();
 
@@ -358,7 +369,7 @@ public sealed partial class MainWindow : Window
         ApplyBounds(_compactBounds, show: true);
         if (normalizedVisualScales) await SaveStateAsync();
 
-        _desktopLayer = new DesktopLayerService(_hwnd);
+        _desktopLayer = new DesktopLayerService(_hwnd, IntPtr.Zero);
         ApplyBounds(_compactBounds, show: true);
         if (!_uiSettings.AdvancedEffectsEnabled)
         {
