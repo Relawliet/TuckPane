@@ -79,7 +79,7 @@ public sealed class OrganizerDefinition
     public GlassTheme? ThemeOverride { get; set; }
     public OrganizerPlacementMode PlacementMode { get; set; } = OrganizerPlacementMode.Floating;
     public OrganizerLayout Layout { get; set; } = new();
-    public double CompactScale { get; set; } = OrganizerLimits.MinimumCompactScale;
+    public double CompactScale { get; set; } = OrganizerLimits.DefaultCompactScale;
     public double CanvasScale { get; set; } = 1;
     public double ItemScale { get; set; } = 1;
     public double NameScale { get; set; } = 1;

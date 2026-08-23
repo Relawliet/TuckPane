@@ -2,9 +2,10 @@ namespace TuckPane.Models;
 
 internal static class OrganizerLimits
 {
-    internal const double MinimumCompactScale = 1.56;
+    internal const double MinimumCompactScale = 1.2;
+    internal const double DefaultCompactScale = 1.56;
     internal const double MaximumCompactScale = 3;
-    internal const double PositionedCompactScale = 1.8;
+    internal const double MaximumPositionedCompactScale = 1.8;
     internal const double CompactWindowWidthDip = 76;
     internal const double CompactWindowHeightDip = 68;
     internal const int MinimumGridDimension = 2;

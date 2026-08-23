@@ -90,4 +90,48 @@ Check(invalidPair.Organizers[0].ManualCanvasBaseWidthDip is null &&
       invalidPair.Organizers[0].ManualCanvasBaseHeightDip is null,
     "不完整的手动画布尺寸未被清理。");
 
+var compactScaleLimits = new AppStateV2
+{
+    Organizers =
+    [
+        new OrganizerDefinition { Name = "悬浮下限", PlacementMode = OrganizerPlacementMode.Floating, CompactScale = .5 },
+        new OrganizerDefinition { Name = "悬浮上限", PlacementMode = OrganizerPlacementMode.Floating, CompactScale = 4 },
+        new OrganizerDefinition { Name = "定位下限", PlacementMode = OrganizerPlacementMode.Positioned, CompactScale = .5 },
+        new OrganizerDefinition { Name = "定位上限", PlacementMode = OrganizerPlacementMode.Positioned, CompactScale = 4 },
+        new OrganizerDefinition { Name = "定位旧值", PlacementMode = OrganizerPlacementMode.Positioned, CompactScale = 1.8 }
+    ]
+};
+StateStore.Normalize(compactScaleLimits);
+Check(compactScaleLimits.Organizers[0].CompactScale == 1.2, "悬浮入口下限不是 120%。");
+Check(compactScaleLimits.Organizers[1].CompactScale == 3, "悬浮入口上限不是 300%。");
+Check(compactScaleLimits.Organizers[2].CompactScale == 1.2, "定位入口下限不是 120%。");
+Check(compactScaleLimits.Organizers[3].CompactScale == 1.8, "定位入口上限不是 180%。");
+Check(compactScaleLimits.Organizers[4].CompactScale == 1.8, "旧定位入口 180% 没有保持不变。");
+
+var gridDisplay = new DisplayInfo(
+    "test-grid",
+    new NativeMethods.RECT { Left = 0, Top = 0, Right = 960, Bottom = 960 },
+    new NativeMethods.RECT { Left = 0, Top = 0, Right = 960, Bottom = 960 },
+    1);
+var gridSnapshot = new DesktopGridSnapshot(gridDisplay, 96, 96, [], true);
+DesktopGridPlacement smallPlacement = DesktopGridService.Find(gridSnapshot, [], null, 1.2)!;
+DesktopGridPlacement defaultPlacement = DesktopGridService.Find(gridSnapshot, [], null, 1.56)!;
+DesktopGridPlacement maximumPlacement = DesktopGridService.Find(gridSnapshot, [], null, 1.8)!;
+Check(smallPlacement.CompactScale == 1.2 && defaultPlacement.CompactScale == 1.56 && maximumPlacement.CompactScale == 1.8,
+    "定位网格没有使用请求的入口比例。");
+Check(smallPlacement.Bounds.Width < defaultPlacement.Bounds.Width &&
+      defaultPlacement.Bounds.Width < maximumPlacement.Bounds.Width &&
+      smallPlacement.Bounds.Height < defaultPlacement.Bounds.Height &&
+      defaultPlacement.Bounds.Height < maximumPlacement.Bounds.Height,
+    "定位入口尺寸没有随比例递增。");
+Check(maximumPlacement.Bounds.Width <= gridSnapshot.CellWidthPx &&
+      maximumPlacement.Bounds.Height <= gridSnapshot.CellHeightPx,
+    "定位入口超过了一个桌面网格。");
+var tightGridSnapshot = new DesktopGridSnapshot(gridDisplay, 64, 64, [], true);
+DesktopGridPlacement tightPlacement = DesktopGridService.Find(tightGridSnapshot, [], null, 1.2)!;
+Check(tightPlacement.CompactScale < 1.2 &&
+      tightPlacement.Bounds.Width <= tightGridSnapshot.CellWidthPx &&
+      tightPlacement.Bounds.Height <= tightGridSnapshot.CellHeightPx,
+    "极端桌面网格没有优先保持单格占用。");
+
 Console.WriteLine("TuckPane logic checks: PASS");

@@ -75,19 +75,21 @@ internal sealed class DesktopGridService
 
     internal DesktopGridPlacement? FindFirstAvailable(
         DisplayInfo display,
-        IReadOnlyList<NativeMethods.RECT> occupiedOrganizerBounds)
+        IReadOnlyList<NativeMethods.RECT> occupiedOrganizerBounds,
+        double compactScale)
     {
         DesktopGridSnapshot snapshot = ReadSnapshot(display);
-        return Find(snapshot, occupiedOrganizerBounds, desiredCenter: null);
+        return Find(snapshot, occupiedOrganizerBounds, desiredCenter: null, compactScale);
     }
 
     internal DesktopGridPlacement? FindNearestAvailable(
         DisplayInfo display,
         NativeMethods.POINT desiredCenter,
-        IReadOnlyList<NativeMethods.RECT> occupiedOrganizerBounds)
+        IReadOnlyList<NativeMethods.RECT> occupiedOrganizerBounds,
+        double compactScale)
     {
         DesktopGridSnapshot snapshot = ReadSnapshot(display);
-        return Find(snapshot, occupiedOrganizerBounds, desiredCenter);
+        return Find(snapshot, occupiedOrganizerBounds, desiredCenter, compactScale);
     }
 
     internal static double CalculatePositionedCompactScale(DesktopGridSnapshot snapshot)
@@ -100,7 +102,7 @@ internal sealed class DesktopGridService
         return Math.Clamp(
             Math.Min(widthScale, heightScale),
             .25,
-            OrganizerLimits.PositionedCompactScale);
+            OrganizerLimits.MaximumPositionedCompactScale);
     }
 
     internal static (int Width, int Height, int TileSize) CalculatePositionedWindowSize(
@@ -119,9 +121,14 @@ internal sealed class DesktopGridService
     internal static DesktopGridPlacement? Find(
         DesktopGridSnapshot snapshot,
         IReadOnlyList<NativeMethods.RECT> occupiedOrganizerBounds,
-        NativeMethods.POINT? desiredCenter)
+        NativeMethods.POINT? desiredCenter,
+        double compactScale)
     {
-        double scale = CalculatePositionedCompactScale(snapshot);
+        double requestedScale = Math.Clamp(
+            compactScale,
+            OrganizerLimits.MinimumCompactScale,
+            OrganizerLimits.MaximumPositionedCompactScale);
+        double scale = Math.Min(requestedScale, CalculatePositionedCompactScale(snapshot));
         (int width, int height, int tileSize) = CalculatePositionedWindowSize(snapshot, scale);
         List<GridSlot> slots = CreateSlots(snapshot, width, height, tileSize, desiredCenter);
 
@@ -142,9 +149,13 @@ internal sealed class DesktopGridService
             : null;
     }
 
-    internal static bool IsAligned(DesktopGridSnapshot snapshot, NativeMethods.RECT bounds, int tolerancePx = 1)
+    internal static bool IsAligned(
+        DesktopGridSnapshot snapshot,
+        NativeMethods.RECT bounds,
+        double compactScale,
+        int tolerancePx = 1)
     {
-        double scale = CalculatePositionedCompactScale(snapshot);
+        double scale = Math.Min(compactScale, CalculatePositionedCompactScale(snapshot));
         (int width, int height, int tileSize) = CalculatePositionedWindowSize(snapshot, scale);
         return CreateSlots(snapshot, width, height, tileSize, desiredCenter: null).Any(slot =>
             Math.Abs(slot.Bounds.Left - bounds.Left) <= tolerancePx &&

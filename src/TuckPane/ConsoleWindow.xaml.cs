@@ -679,8 +679,13 @@ public sealed partial class ConsoleWindow : Window
         if (!_componentReady || AddRowsCard is null || _adjustingAddControls) return;
         _adjustingAddControls = true;
         bool positioned = AddPlacementModeCombo.SelectedIndex == (int)OrganizerPlacementMode.Positioned;
-        AddCompactScaleCard.Visibility = positioned ? Visibility.Collapsed : Visibility.Visible;
-        if (positioned) AddCompactScaleSlider.Value = OrganizerLimits.PositionedCompactScale;
+        AddCompactScaleSlider.Maximum = positioned
+            ? OrganizerLimits.MaximumPositionedCompactScale
+            : OrganizerLimits.MaximumCompactScale;
+        AddCompactScaleSlider.Value = Math.Clamp(
+            AddCompactScaleSlider.Value,
+            OrganizerLimits.MinimumCompactScale,
+            AddCompactScaleSlider.Maximum);
         (int rows, int columns) = ReadGridDimensions(AddRowsSlider, AddColumnsSlider);
         var layout = new OrganizerLayout
         {
@@ -711,9 +716,7 @@ public sealed partial class ConsoleWindow : Window
                 ? OrganizerPlacementMode.Positioned
                 : OrganizerPlacementMode.Floating,
             Layout = new OrganizerLayout { Mode = OrganizerLayoutMode.Grid, Rows = rows, Columns = columns },
-            CompactScale = AddPlacementModeCombo.SelectedIndex == (int)OrganizerPlacementMode.Positioned
-                ? OrganizerLimits.PositionedCompactScale
-                : AddCompactScaleSlider.Value,
+            CompactScale = AddCompactScaleSlider.Value,
             CanvasScale = AddCanvasScaleSlider.Value,
             ItemScale = AddItemScaleSlider.Value,
             NameScale = AddNameScaleSlider.Value
@@ -830,8 +833,13 @@ public sealed partial class ConsoleWindow : Window
         if (ManageRowsCard is null || _adjustingManageControls) return;
         _adjustingManageControls = true;
         bool positioned = ManagePlacementModeCombo.SelectedIndex == (int)OrganizerPlacementMode.Positioned;
-        ManageCompactScaleCard.Visibility = positioned ? Visibility.Collapsed : Visibility.Visible;
-        if (positioned) ManageCompactScaleSlider.Value = OrganizerLimits.PositionedCompactScale;
+        ManageCompactScaleSlider.Maximum = positioned
+            ? OrganizerLimits.MaximumPositionedCompactScale
+            : OrganizerLimits.MaximumCompactScale;
+        ManageCompactScaleSlider.Value = Math.Clamp(
+            ManageCompactScaleSlider.Value,
+            OrganizerLimits.MinimumCompactScale,
+            ManageCompactScaleSlider.Maximum);
         (int rows, int columns) = ReadGridDimensions(ManageRowsSlider, ManageColumnsSlider);
         var layout = new OrganizerLayout { Mode = OrganizerLayoutMode.Grid, Rows = rows, Columns = columns };
         MainWindow? window = _selectedId is Guid id ? _host.Windows.FirstOrDefault(item => item.OrganizerId == id) : null;

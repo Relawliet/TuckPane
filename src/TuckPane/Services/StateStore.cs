@@ -145,11 +145,13 @@ public sealed class StateStore
                 organizer.Layout.Rows = Math.Clamp(organizer.Layout.Rows, OrganizerLimits.MinimumGridDimension, OrganizerLimits.MaximumLayoutDimension);
                 organizer.Layout.Columns = Math.Clamp(organizer.Layout.Columns, OrganizerLimits.MinimumGridDimension, OrganizerLimits.MaximumLayoutDimension);
             }
-            organizer.CompactScale = Math.Clamp(organizer.CompactScale, OrganizerLimits.MinimumCompactScale, OrganizerLimits.MaximumCompactScale);
-            if (organizer.PlacementMode == OrganizerPlacementMode.Positioned)
-            {
-                organizer.CompactScale = OrganizerLimits.PositionedCompactScale;
-            }
+            double maximumCompactScale = organizer.PlacementMode == OrganizerPlacementMode.Positioned
+                ? OrganizerLimits.MaximumPositionedCompactScale
+                : OrganizerLimits.MaximumCompactScale;
+            organizer.CompactScale = Math.Clamp(
+                organizer.CompactScale,
+                OrganizerLimits.MinimumCompactScale,
+                maximumCompactScale);
             organizer.CanvasScale = Math.Clamp(organizer.CanvasScale, .1, 1.2);
             organizer.ItemScale = Math.Clamp(organizer.ItemScale, .5, 1.65);
             organizer.NameScale = Math.Clamp(organizer.NameScale, .6, 1);
