@@ -1,5 +1,6 @@
 using TuckPane.Models;
 using TuckPane.Services;
+using TuckPane.Core;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
@@ -101,9 +102,53 @@ public sealed class AppHost : IDisposable
         }
     }
 
+    public Task<OrganizerDefinition> DuplicateOrganizerAsync(Guid id)
+    {
+        OrganizerDefinition source = State.Organizers.First(item => item.Id == id);
+        string name = OrganizerInteractionMath.CreateCopyName(
+            source.Name,
+            State.Organizers.Select(item => item.Name),
+            AppStrings.Get("CopyNameSuffix"));
+        var draft = OrganizerInteractionMath.CopySettings(source, name);
+        string itemsPath = AppPaths.ResolveStoragePath(source);
+        string? container = AppPaths.GetOwnedStorageContainer(source);
+        string? storageParent = Path.GetDirectoryName(container ?? itemsPath);
+        return CreateOrganizerAsync(draft, storageParent);
+    }
+
+    public async Task<string?> ToggleOrganizerModeAsync(Guid id)
+    {
+        OrganizerDefinition current = State.Organizers.First(item => item.Id == id);
+        if (_windows.TryGetValue(id, out MainWindow? window) && window.IsExpanded)
+        {
+            await window.CollapseForPeerAsync();
+        }
+
+        OrganizerDefinition edited = OrganizerInteractionMath.CopySettings(current, current.Name);
+        edited.Id = current.Id;
+        edited.PlacementMode = current.PlacementMode == OrganizerPlacementMode.Floating
+            ? OrganizerPlacementMode.Positioned
+            : OrganizerPlacementMode.Floating;
+        if (edited.PlacementMode == OrganizerPlacementMode.Positioned)
+        {
+            edited.CompactScale = OrganizerLimits.PositionedCompactScale;
+        }
+
+        string? error = ApplyOrganizerRuntime(
+            edited,
+            OrganizerVisualChange.PlacementMode | OrganizerVisualChange.CompactScale);
+        if (error is not null) return error;
+        await SaveStateAsync();
+        Console.RefreshAll(id);
+        return null;
+    }
+
     internal string? ApplyOrganizerRuntime(OrganizerDefinition edited, OrganizerVisualChange changes)
     {
         OrganizerDefinition current = State.Organizers.First(item => item.Id == edited.Id);
+        bool layoutChanged = current.Layout.Mode != edited.Layout.Mode ||
+            current.Layout.Rows != edited.Layout.Rows ||
+            current.Layout.Columns != edited.Layout.Columns;
         OrganizerPlacementMode previousMode = current.PlacementMode;
         double previousCompactScale = current.CompactScale;
         WidgetPosition? previousPosition = current.Position;
@@ -115,6 +160,11 @@ public sealed class AppHost : IDisposable
         current.CanvasScale = edited.CanvasScale;
         current.ItemScale = edited.ItemScale;
         current.NameScale = edited.NameScale;
+        if (layoutChanged)
+        {
+            current.ManualCanvasBaseWidthDip = null;
+            current.ManualCanvasBaseHeightDip = null;
+        }
         StateStore.Normalize(State);
         if (_windows.TryGetValue(current.Id, out MainWindow? window))
         {

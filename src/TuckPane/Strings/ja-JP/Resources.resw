@@ -52,8 +52,11 @@
   <data name="GridLayoutFormat" xml:space="preserve"><value>{0}×{1}</value></data>
   <data name="ManageItemSummaryFormat" xml:space="preserve"><value>{0} · {1} · {2}</value></data>
   <data name="ContextManage" xml:space="preserve"><value>設定</value></data>
+  <data name="ContextDuplicate" xml:space="preserve"><value>ウィンドウを複製</value></data>
+  <data name="ContextSwitchMode" xml:space="preserve"><value>モードを切り替え</value></data>
   <data name="ContextRename" xml:space="preserve"><value>名前を変更</value></data>
   <data name="ContextOpenStorage" xml:space="preserve"><value>保存先を開く</value></data>
+  <data name="CopyNameSuffix" xml:space="preserve"><value> - コピー</value></data>
   <data name="Collapse" xml:space="preserve"><value>折りたたむ</value></data>
   <data name="TransparencyTitle" xml:space="preserve"><value>透明効果を利用できません</value></data>
   <data name="TransparencyMessage" xml:space="preserve"><value>Windows のリアルタイムアクリルを利用できないため、対応する単色背景を使用しています。</value></data>

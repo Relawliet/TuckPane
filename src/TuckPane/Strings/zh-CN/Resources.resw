@@ -52,8 +52,11 @@
   <data name="GridLayoutFormat" xml:space="preserve"><value>{0}×{1}</value></data>
   <data name="ManageItemSummaryFormat" xml:space="preserve"><value>{0} · {1} · {2}</value></data>
   <data name="ContextManage" xml:space="preserve"><value>设置</value></data>
+  <data name="ContextDuplicate" xml:space="preserve"><value>窗口复制</value></data>
+  <data name="ContextSwitchMode" xml:space="preserve"><value>模式切换</value></data>
   <data name="ContextRename" xml:space="preserve"><value>重命名</value></data>
   <data name="ContextOpenStorage" xml:space="preserve"><value>打开收纳目录</value></data>
+  <data name="CopyNameSuffix" xml:space="preserve"><value> - 副本</value></data>
   <data name="Collapse" xml:space="preserve"><value>收缩</value></data>
   <data name="TransparencyTitle" xml:space="preserve"><value>透明效果已降级</value></data>
   <data name="TransparencyMessage" xml:space="preserve"><value>Windows 当前不提供实时毛玻璃，TuckPane 已使用匹配主题的纯色背景。</value></data>

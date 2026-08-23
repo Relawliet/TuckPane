@@ -52,8 +52,11 @@
   <data name="GridLayoutFormat" xml:space="preserve"><value>{0}×{1}</value></data>
   <data name="ManageItemSummaryFormat" xml:space="preserve"><value>{0} · {1} · {2}</value></data>
   <data name="ContextManage" xml:space="preserve"><value>Settings</value></data>
+  <data name="ContextDuplicate" xml:space="preserve"><value>Duplicate window</value></data>
+  <data name="ContextSwitchMode" xml:space="preserve"><value>Switch mode</value></data>
   <data name="ContextRename" xml:space="preserve"><value>Rename</value></data>
   <data name="ContextOpenStorage" xml:space="preserve"><value>Open storage folder</value></data>
+  <data name="CopyNameSuffix" xml:space="preserve"><value> - Copy</value></data>
   <data name="Collapse" xml:space="preserve"><value>Collapse</value></data>
   <data name="TransparencyTitle" xml:space="preserve"><value>Transparency is unavailable</value></data>
   <data name="TransparencyMessage" xml:space="preserve"><value>Windows cannot provide live acrylic right now. TuckPane is using the matching solid fallback.</value></data>

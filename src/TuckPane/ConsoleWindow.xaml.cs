@@ -836,9 +836,34 @@ public sealed partial class ConsoleWindow : Window
         var layout = new OrganizerLayout { Mode = OrganizerLayoutMode.Grid, Rows = rows, Columns = columns };
         MainWindow? window = _selectedId is Guid id ? _host.Windows.FirstOrDefault(item => item.OrganizerId == id) : null;
         DisplayInfo display = window is null ? GetPrimaryDisplay() : DisplayPlacementService.ForBounds(window.CompactBounds);
-        ManageCanvasScaleSlider.Minimum = DisplayPlacementService.CalculateMinimumCanvasScale(display, layout);
+        double maximumItemScale;
+        if (_editing?.ManualCanvasBaseWidthDip is double baseWidth &&
+            _editing.ManualCanvasBaseHeightDip is double baseHeight)
+        {
+            (double minimumWidth, double minimumHeight) =
+                DisplayPlacementService.CalculateMinimumExpandedSizeDip(layout, .5);
+            ManageCanvasScaleSlider.Minimum = Math.Min(1.2,
+                Math.Max(.1, Math.Max(minimumWidth / baseWidth, minimumHeight / baseHeight)));
+            double canvas = Math.Clamp(ManageCanvasScaleSlider.Value, ManageCanvasScaleSlider.Minimum, 1.2);
+            NativeMethods.RECT work = DisplayPlacementService.GetExpandedWorkArea(display);
+            double fit = Math.Min(1, Math.Min(
+                work.Width / display.Scale / (baseWidth * canvas),
+                work.Height / display.Scale / (baseHeight * canvas)));
+            maximumItemScale = DisplayPlacementService.CalculateMaximumItemScaleForExpandedSize(
+                layout,
+                baseWidth * canvas * fit,
+                baseHeight * canvas * fit);
+        }
+        else
+        {
+            ManageCanvasScaleSlider.Minimum = DisplayPlacementService.CalculateMinimumCanvasScale(display, layout);
+            maximumItemScale = DisplayPlacementService.CalculateMaximumItemScale(
+                display,
+                layout,
+                ManageCanvasScaleSlider.Value);
+        }
         if (ManageCanvasScaleSlider.Value < ManageCanvasScaleSlider.Minimum) ManageCanvasScaleSlider.Value = ManageCanvasScaleSlider.Minimum;
-        ManageItemScaleSlider.Maximum = DisplayPlacementService.CalculateMaximumItemScale(display, layout, ManageCanvasScaleSlider.Value);
+        ManageItemScaleSlider.Maximum = maximumItemScale;
         if (ManageItemScaleSlider.Value > ManageItemScaleSlider.Maximum) ManageItemScaleSlider.Value = ManageItemScaleSlider.Maximum;
         SetPercent(ManageCompactPercent, ManageCompactScaleSlider.Value);
         SetPercent(ManageCanvasPercent, ManageCanvasScaleSlider.Value);
@@ -854,8 +879,14 @@ public sealed partial class ConsoleWindow : Window
         _editing.PlacementMode = ManagePlacementModeCombo.SelectedIndex == (int)OrganizerPlacementMode.Positioned
             ? OrganizerPlacementMode.Positioned
             : OrganizerPlacementMode.Floating;
+        (int rows, int columns) = ReadGridDimensions(ManageRowsSlider, ManageColumnsSlider);
+        if (_editing.Layout.Rows != rows || _editing.Layout.Columns != columns)
+        {
+            _editing.ManualCanvasBaseWidthDip = null;
+            _editing.ManualCanvasBaseHeightDip = null;
+        }
         _editing.Layout.Mode = OrganizerLayoutMode.Grid;
-        (_editing.Layout.Rows, _editing.Layout.Columns) = ReadGridDimensions(ManageRowsSlider, ManageColumnsSlider);
+        (_editing.Layout.Rows, _editing.Layout.Columns) = (rows, columns);
         _editing.ThemeOverride = ThemeFromCombo(ManageThemeCombo.SelectedIndex);
         _editing.CompactScale = ManageCompactScaleSlider.Value;
         _editing.CanvasScale = ManageCanvasScaleSlider.Value;
@@ -1008,6 +1039,8 @@ public sealed partial class ConsoleWindow : Window
         CanvasScale = source.CanvasScale,
         ItemScale = source.ItemScale,
         NameScale = source.NameScale,
+        ManualCanvasBaseWidthDip = source.ManualCanvasBaseWidthDip,
+        ManualCanvasBaseHeightDip = source.ManualCanvasBaseHeightDip,
         Position = source.Position,
         StorageRelativePath = source.StorageRelativePath,
         StorageAbsolutePath = source.StorageAbsolutePath,

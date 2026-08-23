@@ -83,6 +83,8 @@ public sealed class OrganizerDefinition
     public double CanvasScale { get; set; } = 1;
     public double ItemScale { get; set; } = 1;
     public double NameScale { get; set; } = 1;
+    public double? ManualCanvasBaseWidthDip { get; set; }
+    public double? ManualCanvasBaseHeightDip { get; set; }
     public WidgetPosition? Position { get; set; }
     public string StorageRelativePath { get; set; } = string.Empty;
     public string? StorageAbsolutePath { get; set; }

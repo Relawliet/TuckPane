@@ -10,6 +10,8 @@ public static class StartupService
 
     public static void Apply(bool enabled)
     {
+        if (AppPaths.IsTestMode) return;
+
         using RegistryKey key = Registry.CurrentUser.CreateSubKey(RunKeyPath, writable: true);
         key.DeleteValue(LegacyValueName, throwOnMissingValue: false);
         if (!enabled)

@@ -153,6 +153,19 @@ public sealed class StateStore
             organizer.CanvasScale = Math.Clamp(organizer.CanvasScale, .1, 1.2);
             organizer.ItemScale = Math.Clamp(organizer.ItemScale, .5, 1.65);
             organizer.NameScale = Math.Clamp(organizer.NameScale, .6, 1);
+            if (organizer.ManualCanvasBaseWidthDip is not double baseWidth ||
+                organizer.ManualCanvasBaseHeightDip is not double baseHeight ||
+                !double.IsFinite(baseWidth) || !double.IsFinite(baseHeight) ||
+                baseWidth <= 0 || baseHeight <= 0)
+            {
+                organizer.ManualCanvasBaseWidthDip = null;
+                organizer.ManualCanvasBaseHeightDip = null;
+            }
+            else
+            {
+                organizer.ManualCanvasBaseWidthDip = Math.Clamp(baseWidth, 1, 10000);
+                organizer.ManualCanvasBaseHeightDip = Math.Clamp(baseHeight, 1, 10000);
+            }
             if (!string.IsNullOrWhiteSpace(organizer.StorageAbsolutePath))
             {
                 string absolute = organizer.StorageAbsolutePath.Trim();

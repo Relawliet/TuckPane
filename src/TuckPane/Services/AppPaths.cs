@@ -18,6 +18,8 @@ public static class AppPaths
     public static string BackupStatePath { get; } = Path.Combine(LocalRoot, "state.json.bak");
     public static string LogPath { get; } = Path.Combine(LocalRoot, "TuckPane.log");
 
+    internal static bool IsTestMode => TestRoot is not null;
+
     internal static bool UsesLegacyRoots { get; } = Path.GetFileName(UserRoot)
         .Equals(LegacyProductDirectoryName, StringComparison.OrdinalIgnoreCase);
 
