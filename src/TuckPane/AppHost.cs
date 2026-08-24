@@ -339,6 +339,23 @@ public sealed class AppHost : IDisposable
         }
     }
 
+    public async Task SetCollapseOnOutsideClickAsync(bool enabled)
+    {
+        if (State.GlobalSettings.CollapseOnOutsideClick == enabled) return;
+        bool previous = State.GlobalSettings.CollapseOnOutsideClick;
+        State.GlobalSettings.CollapseOnOutsideClick = enabled;
+        try
+        {
+            await SaveStateAsync();
+        }
+        catch
+        {
+            State.GlobalSettings.CollapseOnOutsideClick = previous;
+            throw;
+        }
+        foreach (MainWindow window in _windows.Values) window.ApplyOutsideClickSetting();
+    }
+
     public async Task SetLanguageAsync(AppLanguage language)
     {
         if (!Enum.IsDefined(language)) language = AppLanguage.ChineseSimplified;

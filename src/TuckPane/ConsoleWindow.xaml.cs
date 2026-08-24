@@ -117,6 +117,7 @@ public sealed partial class ConsoleWindow : Window
     {
         UpdateThemeCards(_host.State.GlobalSettings.Theme);
         UpdateStartupToggle();
+        UpdateCollapseOutsideToggle();
         CreateOrganizerButton.IsEnabled = _host.State.Organizers.Count < OrganizerLimits.MaximumOrganizers;
         CreateLimitText.Visibility = _host.State.Organizers.Count >= OrganizerLimits.MaximumOrganizers ? Visibility.Visible : Visibility.Collapsed;
         PopulateManageList(selectId ?? _selectedId);
@@ -518,6 +519,31 @@ public sealed partial class ConsoleWindow : Window
             AppLogger.Error("无法更新开机启动设置。", ex);
             UpdateStartupToggle();
             ShowError(AppStrings.Get("StartupErrorTitle"), ex.Message);
+        }
+    }
+
+    private bool _loadingCollapseOutside;
+
+    private void UpdateCollapseOutsideToggle()
+    {
+        if (CollapseOutsideToggle is null) return;
+        _loadingCollapseOutside = true;
+        CollapseOutsideToggle.IsOn = _host.State.GlobalSettings.CollapseOnOutsideClick;
+        _loadingCollapseOutside = false;
+    }
+
+    private async void CollapseOutsideToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_componentReady || _loadingCollapseOutside) return;
+        try
+        {
+            await _host.SetCollapseOnOutsideClickAsync(CollapseOutsideToggle.IsOn);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("无法更新自动收缩设置。", ex);
+            UpdateCollapseOutsideToggle();
+            ShowError(AppStrings.Get("CollapseOutsideErrorTitle"), ex.Message);
         }
     }
 

@@ -267,7 +267,8 @@ public sealed partial class MainWindow : Window
 
     private void MainWindow_ActivationChanged(object sender, WindowActivatedEventArgs args)
     {
-        if (args.WindowActivationState == WindowActivationState.Deactivated && _expanded && !_animating)
+        if (args.WindowActivationState == WindowActivationState.Deactivated && _expanded && !_animating &&
+            _host.State.GlobalSettings.CollapseOnOutsideClick)
         {
             _ = CollapseAsync();
         }
@@ -278,6 +279,18 @@ public sealed partial class MainWindow : Window
         if (_expanded && !_animating)
         {
             _ = CollapseAsync();
+        }
+    }
+
+    internal void ApplyOutsideClickSetting()
+    {
+        if (_expanded && !_animating && _host.State.GlobalSettings.CollapseOnOutsideClick)
+        {
+            _outsideClickHook?.Start();
+        }
+        else
+        {
+            _outsideClickHook?.Stop();
         }
     }
 
@@ -1049,7 +1062,7 @@ public sealed partial class MainWindow : Window
                 ExpandedView.Opacity = 1;
                 GetExpandedCompositionVisual().Scale = Vector3.One;
                 _animating = false;
-                _outsideClickHook?.Start();
+                ApplyOutsideClickSetting();
                 if (scrollToEnd) ScrollToEnd(animated: false);
                 WindowRoot.Focus(FocusState.Programmatic);
                 UpdateCanvasResizeEdgeWindows(show: true);

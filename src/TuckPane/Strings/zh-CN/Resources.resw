@@ -143,6 +143,9 @@
   <data name="RecreateStorageErrorTitle" xml:space="preserve"><value>无法重建收纳目录</value></data>
   <data name="MoveToDesktopFailed" xml:space="preserve"><value>无法将项目移动到桌面。</value></data>
   <data name="LanguageErrorTitle" xml:space="preserve"><value>无法切换语言</value></data>
+  <data name="CollapseOutsideTitle" xml:space="preserve"><value>点击窗口外自动收缩</value></data>
+  <data name="CollapseOutsideDescription" xml:space="preserve"><value>展开后点击其他位置时自动收起。</value></data>
+  <data name="CollapseOutsideErrorTitle" xml:space="preserve"><value>无法更新自动收缩设置</value></data>
   <data name="UnsupportedReparsePathFormat" xml:space="preserve"><value>目录中包含不支持的重解析点：{0}</value></data>
   <data name="CopyVerificationFailed" xml:space="preserve"><value>复制校验失败，源目录与目标临时目录不一致。</value></data>
   <data name="WindowMinimize" xml:space="preserve"><value>最小化</value></data>
