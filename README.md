@@ -4,6 +4,32 @@
 
 TuckPane is a desktop file organizer for Windows 11 x64. It keeps real files and folders inside compact desktop panes that expand when needed and stay out of the way the rest of the time.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/images/organizer-expanded.png" alt="An expanded TuckPane organizer showing files and folders" width="720">
+  <br><sub>Expand an organizer only when you need its contents.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/images/context-menu.png" alt="TuckPane right-click menu with quick organizer actions" width="344">
+  <br><sub>Right-click for settings, duplication, mode switching, renaming, storage access, and safe deletion.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/images/manage-settings.png" alt="TuckPane organizer management settings" width="900">
+  <br><sub>Adjust each organizer's grid, mode, theme, entry size, canvas size, and content scale.</sub>
+</p>
+
+<p align="center">
+  <img src="docs/images/themes.png" alt="TuckPane light acrylic, dark acrylic, solid light, and solid dark themes" width="800">
+  <br><sub>Choose between light acrylic, dark acrylic, solid light, and solid dark themes.</sub>
+</p>
+
+### Quick actions
+
+Drag files and folders directly into a pane, use the right-click menu to manage it, hold `Ctrl` and scroll to resize its contents, optionally collapse it by clicking outside, and keep TuckPane running quietly from the system tray.
+
 ## Features
 
 - Create up to 12 independent organizer panes and switch each pane between floating and desktop-positioned modes.
