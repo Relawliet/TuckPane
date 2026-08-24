@@ -12,6 +12,8 @@
   <data name="GeneralTitle" xml:space="preserve"><value>一般</value></data>
   <data name="StartupTitle" xml:space="preserve"><value>Windows 起動時に TuckPane を開始</value></data>
   <data name="StartupDescription" xml:space="preserve"><value>コントロール画面を表示せず収納ウィンドウを復元します。</value></data>
+  <data name="CollapseOutsideTitle" xml:space="preserve"><value>ウィンドウ外のクリックで収納</value></data>
+  <data name="CollapseOutsideDescription" xml:space="preserve"><value>展開後に別の場所をクリックすると自動的に収納します。</value></data>
   <data name="LanguageLabel" xml:space="preserve"><value>言語</value></data>
   <data name="LanguageDescription" xml:space="preserve"><value>再起動せず、すぐに切り替わります。</value></data>
   <data name="LanguageChinese" xml:space="preserve"><value>简体中文</value></data>
@@ -71,6 +73,8 @@
   <data name="DeleteTitleFormat" xml:space="preserve"><value>「{0}」を削除しますか？</value></data>
   <data name="DeleteNonEmptyFormat" xml:space="preserve"><value>{0}をデスクトップの「{1}（書き出し）」へ完全に書き出します。</value></data>
   <data name="DeleteEmpty" xml:space="preserve"><value>空のウィンドウなので、デスクトップに空フォルダーは作成しません。</value></data>
+  <data name="DeleteDirectNonEmptyFormat" xml:space="preserve"><value>保存先「{0}」とその中の{1}をデスクトップの「{2}（書き出し）」へ移動し、元の場所から削除します。</value></data>
+  <data name="DeleteDirectEmptyFormat" xml:space="preserve"><value>空の保存先「{0}」をデスクトップの一意なフォルダーへ移動し、元の場所から削除します。</value></data>
   <data name="Cancel" xml:space="preserve"><value>キャンセル</value></data>
   <data name="DeleteErrorTitle" xml:space="preserve"><value>収納ウィンドウを削除できません</value></data>
   <data name="OpenFolderErrorTitle" xml:space="preserve"><value>フォルダーを開けません</value></data>
@@ -133,15 +137,20 @@
   <data name="LegacyInstanceMessage" xml:space="preserve"><value>TuckPane または旧版 GlassFolder が実行中です。トレイメニューから終了してから TuckPane を起動してください。収納内容は削除されません。</value></data>
   <data name="StorageOutsideRoot" xml:space="preserve"><value>保存先が TuckPane のデータルート外です。</value></data>
   <data name="StorageAbsoluteRequired" xml:space="preserve"><value>カスタム保存先には完全なローカルパスが必要です。</value></data>
+  <data name="StorageProtectedPath" xml:space="preserve"><value>ドライブ、ユーザープロファイル、デスクトップ、ドキュメント、ダウンロード、TuckPane データルートではなく専用のサブフォルダーを選択してください。</value></data>
+  <data name="StorageFolderMissing" xml:space="preserve"><value>選択した保存先フォルダーが存在しません。</value></data>
+  <data name="StoragePathOverlap" xml:space="preserve"><value>選択したフォルダーは別の収納ウィンドウの保存先と重複しています。</value></data>
+  <data name="AutomaticStoragePathFormat" xml:space="preserve"><value>自動：{0}\名前-ID</value></data>
   <data name="StorageLocationLabel" xml:space="preserve"><value>保存場所</value></data>
   <data name="ChooseFolder" xml:space="preserve"><value>フォルダーを選択</value></data>
   <data name="UseDefaultLocation" xml:space="preserve"><value>既定に戻す</value></data>
-  <data name="SelectStorageFolderTitle" xml:space="preserve"><value>収納ウィンドウの保存場所を選択</value></data>
+  <data name="SelectStorageFolderTitle" xml:space="preserve"><value>収納ウィンドウの最終保存先を選択</value></data>
   <data name="SelectStorageFolderCommit" xml:space="preserve"><value>このフォルダーを選択</value></data>
   <data name="StorageFolderPickerError" xml:space="preserve"><value>保存場所を選択できません</value></data>
   <data name="RecreateStorageErrorTitle" xml:space="preserve"><value>保存先フォルダーを再作成できません</value></data>
   <data name="MoveToDesktopFailed" xml:space="preserve"><value>項目をデスクトップへ移動できませんでした。</value></data>
   <data name="LanguageErrorTitle" xml:space="preserve"><value>言語を切り替えられません</value></data>
+  <data name="CollapseOutsideErrorTitle" xml:space="preserve"><value>自動収納の設定を更新できません</value></data>
   <data name="UnsupportedReparsePathFormat" xml:space="preserve"><value>ディレクトリに未対応の再解析ポイントがあります：{0}</value></data>
   <data name="CopyVerificationFailed" xml:space="preserve"><value>元のディレクトリと一時コピーが一致しないため、検証に失敗しました。</value></data>
   <data name="WindowMinimize" xml:space="preserve"><value>最小化</value></data>

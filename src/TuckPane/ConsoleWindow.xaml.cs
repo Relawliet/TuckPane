@@ -28,6 +28,7 @@ public sealed partial class ConsoleWindow : Window
     private bool _initialized;
     private bool _loadingEditor;
     private bool _loadingStartup;
+    private bool _loadingOutsideClick;
     private bool _loadingLanguage;
     private bool _loadingDefaultName;
     private bool _addNameWasEdited;
@@ -40,7 +41,7 @@ public sealed partial class ConsoleWindow : Window
     private OrganizerVisualChange _pendingVisualChanges;
     private CancellationTokenSource? _pageTransition;
     private string _defaultAddName = string.Empty;
-    private string? _addStorageParentPath;
+    private string? _addStoragePath;
 
     public ConsoleWindow(AppHost host)
     {
@@ -117,6 +118,7 @@ public sealed partial class ConsoleWindow : Window
     {
         UpdateThemeCards(_host.State.GlobalSettings.Theme);
         UpdateStartupToggle();
+        UpdateOutsideClickToggle();
         CreateOrganizerButton.IsEnabled = _host.State.Organizers.Count < 12;
         CreateLimitText.Visibility = _host.State.Organizers.Count >= 12 ? Visibility.Visible : Visibility.Collapsed;
         PopulateManageList(selectId ?? _selectedId);
@@ -154,6 +156,7 @@ public sealed partial class ConsoleWindow : Window
         _loadingLanguage = true;
         LanguageCombo.SelectedIndex = (int)_host.State.GlobalSettings.Language;
         _loadingLanguage = false;
+        UpdateAddStoragePath();
         ConsoleInfoBar.IsOpen = false;
         PopulateManageList(_selectedId);
     }
@@ -521,6 +524,29 @@ public sealed partial class ConsoleWindow : Window
         }
     }
 
+    private void UpdateOutsideClickToggle()
+    {
+        if (CollapseOutsideToggle is null) return;
+        _loadingOutsideClick = true;
+        CollapseOutsideToggle.IsOn = _host.State.GlobalSettings.CollapseOnOutsideClick;
+        _loadingOutsideClick = false;
+    }
+
+    private async void CollapseOutsideToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_componentReady || _loadingOutsideClick) return;
+        try
+        {
+            await _host.SetCollapseOnOutsideClickAsync(CollapseOutsideToggle.IsOn);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("无法更新外部点击收缩设置。", ex);
+            UpdateOutsideClickToggle();
+            ShowError(AppStrings.Get("CollapseOutsideErrorTitle"), ex.Message);
+        }
+    }
+
     private async void LanguageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_componentReady || _loadingLanguage || LanguageCombo.SelectedIndex < 0) return;
@@ -649,11 +675,11 @@ public sealed partial class ConsoleWindow : Window
                 CommitButtonText = AppStrings.Get("SelectStorageFolderCommit"),
                 SuggestedStartLocation = PickerLocationId.DocumentsLibrary
             };
-            string suggested = _addStorageParentPath ?? AppPaths.WindowsRoot;
+            string suggested = _addStoragePath ?? AppPaths.WindowsRoot;
             if (Directory.Exists(suggested)) picker.SuggestedStartFolder = suggested;
             PickFolderResult? result = await picker.PickSingleFolderAsync();
             if (result is null || string.IsNullOrWhiteSpace(result.Path)) return;
-            _addStorageParentPath = Path.GetFullPath(result.Path);
+            _addStoragePath = _host.ValidateStoragePath(result.Path);
             UpdateAddStoragePath();
         }
         catch (Exception ex)
@@ -665,13 +691,14 @@ public sealed partial class ConsoleWindow : Window
 
     private void ResetAddStorageButton_Click(object sender, RoutedEventArgs e)
     {
-        _addStorageParentPath = null;
+        _addStoragePath = null;
         UpdateAddStoragePath();
     }
 
     private void UpdateAddStoragePath()
     {
-        if (AddStoragePathBox is not null) AddStoragePathBox.Text = _addStorageParentPath ?? AppPaths.WindowsRoot;
+        if (AddStoragePathBox is not null)
+            AddStoragePathBox.Text = _addStoragePath ?? AppStrings.Format("AutomaticStoragePathFormat", AppPaths.WindowsRoot);
     }
 
     private void UpdateAddControls()
@@ -723,7 +750,7 @@ public sealed partial class ConsoleWindow : Window
         };
         try
         {
-            OrganizerDefinition created = await _host.CreateOrganizerAsync(definition, _addStorageParentPath);
+            OrganizerDefinition created = await _host.CreateOrganizerAsync(definition, _addStoragePath);
             RootNavigation.SelectedItem = ManageNavItem;
             ShowAndActivate(created.Id);
         }
@@ -947,13 +974,19 @@ public sealed partial class ConsoleWindow : Window
         if (_selectedId is not Guid id) return;
         OrganizerDefinition definition = _host.State.Organizers.First(item => item.Id == id);
         MainWindow? window = _host.Windows.FirstOrDefault(item => item.OrganizerId == id);
+        string storagePath = AppPaths.ResolveStoragePath(definition);
+        bool directStorage = !string.IsNullOrWhiteSpace(definition.StorageAbsolutePath);
         var dialog = new ContentDialog
         {
             XamlRoot = ConsoleRoot.XamlRoot,
             Title = AppStrings.Format("DeleteTitleFormat", definition.Name),
-            Content = window?.FileCount > 0
-                ? AppStrings.Format("DeleteNonEmptyFormat", AppStrings.FormatItemCount(window.FileCount), definition.Name)
-                : AppStrings.Get("DeleteEmpty"),
+            Content = directStorage
+                ? window?.FileCount > 0
+                    ? AppStrings.Format("DeleteDirectNonEmptyFormat", storagePath, AppStrings.FormatItemCount(window.FileCount), definition.Name)
+                    : AppStrings.Format("DeleteDirectEmptyFormat", storagePath)
+                : window?.FileCount > 0
+                    ? AppStrings.Format("DeleteNonEmptyFormat", AppStrings.FormatItemCount(window.FileCount), definition.Name)
+                    : AppStrings.Get("DeleteEmpty"),
             PrimaryButtonText = AppStrings.Get("ExportDelete"),
             CloseButtonText = AppStrings.Get("Cancel"),
             DefaultButton = ContentDialogButton.Close

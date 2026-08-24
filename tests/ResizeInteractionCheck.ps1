@@ -14,7 +14,7 @@ New-Item -ItemType Directory -Path $localRoot, $itemsRoot -Force | Out-Null
 
 @'
 {
-  "SchemaVersion": 2,
+  "SchemaVersion": 3,
   "GlobalSettings": { "Theme": 0, "StartWithWindows": false, "Language": 0 },
   "ConsolePlacement": null,
   "Organizers": [

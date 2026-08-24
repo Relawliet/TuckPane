@@ -75,6 +75,7 @@ public sealed partial class MainWindow : Window
     private readonly List<IntPtr> _canvasResizeEdgeWindows = [];
     private readonly Dictionary<IntPtr, IntPtr> _canvasResizeOriginalWindowProcs = [];
     private DesktopLayerService? _desktopLayer;
+    private OutsideClickHook? _outsideClickHook;
     private FileSystemWatcher? _watcher;
     private NativeMethods.RECT _compactBounds;
     private bool _expanded;
@@ -311,6 +312,7 @@ public sealed partial class MainWindow : Window
         if (_hostWindowInitialized) return;
         _hostWindowInitialized = true;
         _hwnd = WindowNative.GetWindowHandle(this);
+        _outsideClickHook = new OutsideClickHook(_hwnd, DispatcherQueue, () => _ = CollapseAsync());
         WindowId windowId = Win32Interop.GetWindowIdFromWindow(_hwnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
         if (_appWindow.Presenter is OverlappedPresenter presenter)
@@ -1030,6 +1032,7 @@ public sealed partial class MainWindow : Window
                 ExpandedView.Opacity = 1;
                 GetExpandedCompositionVisual().Scale = Vector3.One;
                 _animating = false;
+                ApplyOutsideClickSetting();
                 if (scrollToEnd) ScrollToEnd(animated: false);
                 WindowRoot.Focus(FocusState.Programmatic);
                 UpdateCanvasResizeEdgeWindows(show: true);
@@ -1042,6 +1045,7 @@ public sealed partial class MainWindow : Window
     private async Task CollapseAsync()
     {
         if ((!_expanded && !_animating) || _hwnd == IntPtr.Zero) return;
+        _outsideClickHook?.Stop();
         if (_itemReorderSession is not null) CancelItemReorder();
         ShutdownItemDragBoundaryHook();
 
@@ -3792,13 +3796,19 @@ public sealed partial class MainWindow : Window
         }
 
         _desktopLayer?.SetInputActivation(true);
+        string storagePath = AppPaths.ResolveStoragePath(_definition);
+        bool directStorage = !string.IsNullOrWhiteSpace(_definition.StorageAbsolutePath);
         var dialog = new ContentDialog
         {
             XamlRoot = WindowRoot.XamlRoot,
             Title = AppStrings.Format("DeleteTitleFormat", _definition.Name),
-            Content = FileCount > 0
-                ? AppStrings.Format("DeleteNonEmptyFormat", AppStrings.FormatItemCount(FileCount), _definition.Name)
-                : AppStrings.Get("DeleteEmpty"),
+            Content = directStorage
+                ? FileCount > 0
+                    ? AppStrings.Format("DeleteDirectNonEmptyFormat", storagePath, AppStrings.FormatItemCount(FileCount), _definition.Name)
+                    : AppStrings.Format("DeleteDirectEmptyFormat", storagePath)
+                : FileCount > 0
+                    ? AppStrings.Format("DeleteNonEmptyFormat", AppStrings.FormatItemCount(FileCount), _definition.Name)
+                    : AppStrings.Get("DeleteEmpty"),
             PrimaryButtonText = AppStrings.Get("ExportDelete"),
             CloseButtonText = AppStrings.Get("Cancel"),
             DefaultButton = ContentDialogButton.Close
@@ -3929,6 +3939,7 @@ public sealed partial class MainWindow : Window
         _expandedClip?.Dispose();
         _compactSurface.Dispose();
         _expandedSurface.Dispose();
+        _outsideClickHook?.Dispose();
         _watcher?.Dispose();
         foreach (IntPtr edgeWindow in _canvasResizeEdgeWindows)
         {
@@ -3965,6 +3976,13 @@ public sealed partial class MainWindow : Window
 
     internal Guid OrganizerId => _definition.Id;
     internal bool IsExpanded => _expanded || _animating;
+    internal void ApplyOutsideClickSetting()
+    {
+        if (_expanded && !_animating && _host.State.GlobalSettings.CollapseOnOutsideClick)
+            _outsideClickHook?.Start();
+        else
+            _outsideClickHook?.Stop();
+    }
     internal int FileCount => _items.Count;
     internal IReadOnlyList<WidgetItem> ItemSnapshot => _items;
     internal bool StorageExists => _storage.Exists;

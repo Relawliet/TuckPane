@@ -21,7 +21,7 @@ public sealed class StateStore
         Directory.CreateDirectory(Path.GetDirectoryName(_statePath)!);
         LoadResult? loaded = await TryLoadAsync(_statePath) ?? await TryLoadAsync(_backupPath);
         AppStateV2 state = Normalize(loaded?.State ?? new AppStateV2());
-        if (loaded is { WasLegacy: true }) await PersistMigrationAsync(state, loaded.SourcePath);
+        if (loaded is { RequiresMigration: true }) await PersistMigrationAsync(state, loaded.SourcePath);
         return state;
     }
 
@@ -75,7 +75,10 @@ public sealed class StateStore
             if (schemaVersion >= 2)
             {
                 AppStateV2? current = JsonSerializer.Deserialize<AppStateV2>(json, JsonOptions);
-                return current is null ? null : new(current, false, path);
+                if (current is null) return null;
+                current.GlobalSettings ??= new GlobalSettings();
+                if (schemaVersion < 3) current.GlobalSettings.Language = AppLanguage.English;
+                return new(current, schemaVersion < 3, path);
             }
 
             AppStateV1 legacy = JsonSerializer.Deserialize<AppStateV1>(json, JsonOptions) ?? new AppStateV1();
@@ -88,7 +91,7 @@ public sealed class StateStore
         }
     }
 
-    private sealed record LoadResult(AppStateV2 State, bool WasLegacy, string SourcePath);
+    private sealed record LoadResult(AppStateV2 State, bool RequiresMigration, string SourcePath);
 
     internal static AppStateV2 Migrate(AppStateV1 legacy, DateTime createdAtUtc)
     {
@@ -114,10 +117,10 @@ public sealed class StateStore
 
     internal static AppStateV2 Normalize(AppStateV2 state)
     {
-        state.SchemaVersion = 2;
+        state.SchemaVersion = 3;
         state.GlobalSettings ??= new GlobalSettings();
         if (!Enum.IsDefined(state.GlobalSettings.Theme)) state.GlobalSettings.Theme = GlassTheme.Light;
-        if (!Enum.IsDefined(state.GlobalSettings.Language)) state.GlobalSettings.Language = AppLanguage.ChineseSimplified;
+        if (!Enum.IsDefined(state.GlobalSettings.Language)) state.GlobalSettings.Language = AppLanguage.English;
         state.Organizers ??= [];
         state.Organizers = state.Organizers.Take(12).ToList();
 

@@ -59,14 +59,46 @@ public static class AppPaths
 
     public static string CreateStorageRelativePath(string name, Guid id)
     {
-        return Path.Combine("Windows", CreateOwnedContainerName(name, id), "Items");
+        return Path.Combine("Windows", CreateOwnedContainerName(name, id));
     }
 
-    public static string CreateStorageAbsolutePath(string parentPath, string name, Guid id)
+    public static string ValidateCustomStoragePath(string path)
     {
-        if (string.IsNullOrWhiteSpace(parentPath) || !Path.IsPathFullyQualified(parentPath))
+        if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path) || path.StartsWith(@"\\", StringComparison.Ordinal))
             throw new InvalidOperationException(AppStrings.Get("StorageAbsoluteRequired"));
-        return Path.Combine(Path.GetFullPath(parentPath), CreateOwnedContainerName(name, id), "Items");
+        string fullPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string root = Path.GetPathRoot(fullPath) ?? string.Empty;
+        if (fullPath.Equals(root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(AppStrings.Get("StorageProtectedPath"));
+        if (new DriveInfo(root).DriveType == DriveType.Network)
+            throw new InvalidOperationException(AppStrings.Get("StorageProtectedPath"));
+        if (!Directory.Exists(fullPath))
+            throw new DirectoryNotFoundException(AppStrings.Get("StorageFolderMissing"));
+
+        string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string[] protectedPaths =
+        [
+            userProfile,
+            Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            Path.Combine(userProfile, "Downloads"),
+            UserRoot,
+            LocalRoot
+        ];
+        if (protectedPaths.Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(NormalizeDirectory)
+            .Any(protectedPath => SamePath(fullPath, protectedPath) || IsAncestor(fullPath, protectedPath)))
+        {
+            throw new InvalidOperationException(AppStrings.Get("StorageProtectedPath"));
+        }
+        return fullPath;
+    }
+
+    internal static bool PathsOverlap(string first, string second)
+    {
+        string left = NormalizeDirectory(first);
+        string right = NormalizeDirectory(second);
+        return SamePath(left, right) || IsAncestor(left, right) || IsAncestor(right, left);
     }
 
     public static string? GetOwnedStorageContainer(OrganizerDefinition definition)
@@ -88,6 +120,15 @@ public static class AppPaths
         if (safeName.Length > 36) safeName = safeName[..36];
         return $"{safeName}-{id.ToString("N")[..8]}";
     }
+
+    private static string NormalizeDirectory(string path) =>
+        Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+    private static bool SamePath(string first, string second) =>
+        first.Equals(second, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsAncestor(string ancestor, string descendant) =>
+        descendant.StartsWith(ancestor + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
 
     private static (string UserRoot, string LocalRoot) SelectRoots()
     {

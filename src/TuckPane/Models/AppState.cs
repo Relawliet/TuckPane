@@ -49,7 +49,7 @@ internal enum OrganizerVisualChange
 
 public sealed class AppStateV2
 {
-    public int SchemaVersion { get; set; } = 2;
+    public int SchemaVersion { get; set; } = 3;
     public GlobalSettings GlobalSettings { get; set; } = new();
     public ConsolePlacement? ConsolePlacement { get; set; }
     public List<OrganizerDefinition> Organizers { get; set; } = [];
@@ -59,7 +59,8 @@ public sealed class GlobalSettings
 {
     public GlassTheme Theme { get; set; } = GlassTheme.Light;
     public bool StartWithWindows { get; set; }
-    public AppLanguage Language { get; set; } = AppLanguage.ChineseSimplified;
+    public AppLanguage Language { get; set; } = AppLanguage.English;
+    public bool CollapseOnOutsideClick { get; set; }
 }
 
 public sealed class ConsolePlacement

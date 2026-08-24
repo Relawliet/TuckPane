@@ -193,6 +193,16 @@
                             <Grid ColumnSpacing="12">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock FontSize="15" Tag="loc:CollapseOutsideTitle" Text="点击窗口外自动收缩" />
+                                    <TextBlock Foreground="{StaticResource ConsoleSecondaryTextBrush}" FontSize="12" Tag="loc:CollapseOutsideDescription" Text="展开后点击其他位置时自动收起。" />
+                                </StackPanel>
+                                <ToggleSwitch x:Name="CollapseOutsideToggle" Grid.Column="1" VerticalAlignment="Center" Toggled="CollapseOutsideToggle_Toggled" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource Row}">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Spacing="2">
                                     <TextBlock FontSize="15" Tag="loc:LanguageLabel" Text="语言" />
                                     <TextBlock Foreground="{StaticResource ConsoleSecondaryTextBrush}" FontSize="12" Tag="loc:LanguageDescription" Text="切换后立即应用，无需重启。" />
                                 </StackPanel>

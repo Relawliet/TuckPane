@@ -11,7 +11,7 @@ public static class AppStrings
     private static ResourceLoader? _loader;
     private static IReadOnlyDictionary<string, string> _fallback = new Dictionary<string, string>();
 
-    public static AppLanguage Language { get; private set; } = AppLanguage.ChineseSimplified;
+    public static AppLanguage Language { get; private set; } = AppLanguage.English;
     public static int CharacterSpacing => Language == AppLanguage.English ? 0 : 30;
     public static string FontFamily => Language switch
     {
@@ -22,7 +22,7 @@ public static class AppStrings
 
     public static void SetLanguage(AppLanguage language)
     {
-        if (!Enum.IsDefined(language)) language = AppLanguage.ChineseSimplified;
+        if (!Enum.IsDefined(language)) language = AppLanguage.English;
         Language = language;
         string tag = GetLanguageTag(language);
         ApplicationLanguages.PrimaryLanguageOverride = tag;
@@ -62,9 +62,9 @@ public static class AppStrings
 
     public static string GetLanguageTag(AppLanguage language) => language switch
     {
-        AppLanguage.English => "en-US",
+        AppLanguage.ChineseSimplified => "zh-CN",
         AppLanguage.Japanese => "ja-JP",
-        _ => "zh-CN"
+        _ => "en-US"
     };
 
     private static IReadOnlyDictionary<string, string> LoadFallbackCatalog(string languageTag)

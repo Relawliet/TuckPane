@@ -42,14 +42,14 @@ public sealed class AppHost : IDisposable
 
     public GlassTheme GetTheme(OrganizerDefinition organizer) => organizer.ThemeOverride ?? State.GlobalSettings.Theme;
 
-    public async Task<OrganizerDefinition> CreateOrganizerAsync(OrganizerDefinition draft, string? storageParentPath = null)
+    public async Task<OrganizerDefinition> CreateOrganizerAsync(OrganizerDefinition draft, string? storagePath = null)
     {
         if (State.Organizers.Count >= 12) throw new InvalidOperationException(AppStrings.Get("MaximumOrganizersError"));
         Guid id = Guid.NewGuid();
         draft.Id = id;
         draft.Name = string.IsNullOrWhiteSpace(draft.Name) ? AppStrings.DefaultOrganizerName : draft.Name.Trim();
         draft.CreatedAtUtc = DateTimeOffset.UtcNow;
-        if (string.IsNullOrWhiteSpace(storageParentPath))
+        if (string.IsNullOrWhiteSpace(storagePath))
         {
             draft.StorageRelativePath = AppPaths.CreateStorageRelativePath(draft.Name, id);
             draft.StorageAbsolutePath = null;
@@ -57,7 +57,7 @@ public sealed class AppHost : IDisposable
         else
         {
             draft.StorageRelativePath = string.Empty;
-            draft.StorageAbsolutePath = AppPaths.CreateStorageAbsolutePath(storageParentPath, draft.Name, id);
+            draft.StorageAbsolutePath = ValidateStoragePath(storagePath);
         }
 
         DisplayInfo primary = DisplayPlacementService.GetDisplays().FirstOrDefault(display => display.Monitor.Left == 0 && display.Monitor.Top == 0)
@@ -82,8 +82,7 @@ public sealed class AppHost : IDisposable
         draft.Position = DisplayPlacementService.Capture(bounds);
 
         string itemsPath = AppPaths.ResolveStoragePath(draft);
-        string? ownedContainer = AppPaths.GetOwnedStorageContainer(draft);
-        bool createdContainer = ownedContainer is not null && !Directory.Exists(ownedContainer);
+        bool createdStorage = !Directory.Exists(itemsPath);
         try
         {
             Directory.CreateDirectory(itemsPath);
@@ -98,7 +97,7 @@ public sealed class AppHost : IDisposable
             State.Organizers.RemoveAll(item => item.Id == draft.Id);
             try { await SaveStateAsync(); }
             catch (Exception rollbackError) { AppLogger.Error("无法回滚创建收纳窗的状态。", rollbackError); }
-            if (createdContainer && ownedContainer is not null) TryDeleteEmptyCreatedContainer(ownedContainer);
+            if (createdStorage) TryDeleteEmptyCreatedStorage(itemsPath);
             throw;
         }
     }
@@ -111,10 +110,18 @@ public sealed class AppHost : IDisposable
             State.Organizers.Select(item => item.Name),
             AppStrings.Get("CopyNameSuffix"));
         var draft = OrganizerInteractionMath.CopySettings(source, name);
-        string itemsPath = AppPaths.ResolveStoragePath(source);
-        string? container = AppPaths.GetOwnedStorageContainer(source);
-        string? storageParent = Path.GetDirectoryName(container ?? itemsPath);
-        return CreateOrganizerAsync(draft, storageParent);
+        return CreateOrganizerAsync(draft);
+    }
+
+    public string ValidateStoragePath(string path)
+    {
+        string normalized = AppPaths.ValidateCustomStoragePath(path);
+        foreach (OrganizerDefinition organizer in State.Organizers)
+        {
+            if (AppPaths.PathsOverlap(normalized, AppPaths.ResolveStoragePath(organizer)))
+                throw new InvalidOperationException(AppStrings.Get("StoragePathOverlap"));
+        }
+        return normalized;
     }
 
     public async Task<string?> ToggleOrganizerModeAsync(Guid id)
@@ -235,7 +242,8 @@ public sealed class AppHost : IDisposable
         var storage = new StorageService(
             AppPaths.ResolveStoragePath(definition),
             createIfMissing: false,
-            ownedContainerPath: AppPaths.GetOwnedStorageContainer(definition));
+            ownedContainerPath: AppPaths.GetOwnedStorageContainer(definition),
+            exportEmptyDirectory: !string.IsNullOrWhiteSpace(definition.StorageAbsolutePath));
         TransferOutcome outcome = await TransferQueue.RunAsync(token => storage.ExportToDesktopAsync(definition.Name, null, token));
         if (outcome.Status != TransferStatus.Moved) return outcome;
 
@@ -293,7 +301,7 @@ public sealed class AppHost : IDisposable
 
     public async Task SetLanguageAsync(AppLanguage language)
     {
-        if (!Enum.IsDefined(language)) language = AppLanguage.ChineseSimplified;
+        if (!Enum.IsDefined(language)) language = AppLanguage.English;
         if (State.GlobalSettings.Language == language)
         {
             Console.ApplyLanguage();
@@ -414,18 +422,32 @@ public sealed class AppHost : IDisposable
     private static bool RectsEqual(NativeMethods.RECT first, NativeMethods.RECT second) =>
         first.Left == second.Left && first.Top == second.Top && first.Right == second.Right && first.Bottom == second.Bottom;
 
-    private static void TryDeleteEmptyCreatedContainer(string container)
+    private static void TryDeleteEmptyCreatedStorage(string path)
     {
         try
         {
-            string items = Path.Combine(container, "Items");
-            if (Directory.Exists(items) && !Directory.EnumerateFileSystemEntries(items).Any()) Directory.Delete(items);
-            if (Directory.Exists(container) && !Directory.EnumerateFileSystemEntries(container).Any()) Directory.Delete(container);
+            if (Directory.Exists(path) && !Directory.EnumerateFileSystemEntries(path).Any()) Directory.Delete(path);
         }
         catch (Exception ex)
         {
-            AppLogger.Error($"无法回滚空的收纳目录：{container}", ex);
+            AppLogger.Error($"无法回滚空的收纳目录：{path}", ex);
         }
+    }
+
+    public async Task SetCollapseOnOutsideClickAsync(bool enabled)
+    {
+        if (State.GlobalSettings.CollapseOnOutsideClick == enabled) return;
+        State.GlobalSettings.CollapseOnOutsideClick = enabled;
+        try
+        {
+            await SaveStateAsync();
+        }
+        catch
+        {
+            State.GlobalSettings.CollapseOnOutsideClick = !enabled;
+            throw;
+        }
+        foreach (MainWindow window in _windows.Values) window.ApplyOutsideClickSetting();
     }
 
     public Task SaveStateAsync() => _stateStore.SaveAsync(State);

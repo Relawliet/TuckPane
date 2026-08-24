@@ -7,6 +7,123 @@ static void Check(bool condition, string message)
     if (!condition) throw new InvalidOperationException(message);
 }
 
+string logicRoot = Path.Combine(Path.GetTempPath(), $"TuckPane-logic-{Guid.NewGuid():N}");
+Environment.SetEnvironmentVariable("TUCKPANE_TEST_ROOT", logicRoot);
+Directory.CreateDirectory(logicRoot);
+AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+{
+    try { if (Directory.Exists(logicRoot)) Directory.Delete(logicRoot, recursive: true); }
+    catch { }
+};
+
+Check(new AppStateV2().SchemaVersion == 3, "新状态版本不是 3。");
+Check(new GlobalSettings().Language == AppLanguage.English, "新配置没有默认使用英文。");
+Check(!new GlobalSettings().CollapseOnOutsideClick, "窗口外点击收缩没有默认关闭。");
+
+string migrationRoot = Path.Combine(logicRoot, "Migration");
+Directory.CreateDirectory(migrationRoot);
+try
+{
+    string statePath = Path.Combine(migrationRoot, "state.json");
+    await File.WriteAllTextAsync(statePath, """
+        {
+          "SchemaVersion": 2,
+          "GlobalSettings": { "Theme": 0, "StartWithWindows": false, "Language": 2 },
+          "Organizers": []
+        }
+        """);
+    var migrationStore = new StateStore(statePath);
+    AppStateV2 migrated = await migrationStore.LoadAsync();
+    Check(migrated.SchemaVersion == 3 && migrated.GlobalSettings.Language == AppLanguage.English,
+        "旧状态没有一次性迁移到英文。");
+
+    migrated.GlobalSettings.Language = AppLanguage.Japanese;
+    await migrationStore.SaveAsync(migrated);
+    AppStateV2 reloaded = await migrationStore.LoadAsync();
+    Check(reloaded.GlobalSettings.Language == AppLanguage.Japanese,
+        "版本 3 没有保留用户重新选择的语言。");
+}
+finally
+{
+    Directory.Delete(migrationRoot, recursive: true);
+}
+
+string newStoragePath = AppPaths.CreateStorageRelativePath(
+    "Storage",
+    Guid.Parse("22222222-2222-2222-2222-222222222222"));
+Check(!Path.GetFileName(newStoragePath).Equals("Items", StringComparison.OrdinalIgnoreCase),
+    "新建默认目录仍包含末尾 Items 层。");
+
+string customStorage = Path.Combine(logicRoot, "SelectedStorage");
+Directory.CreateDirectory(customStorage);
+await File.WriteAllTextAsync(Path.Combine(customStorage, "existing.txt"), "existing");
+Check(AppPaths.ValidateCustomStoragePath(customStorage) == Path.GetFullPath(customStorage),
+    "手选目录没有被直接作为最终存储目录。");
+Check(new StorageService(customStorage, createIfMissing: false).ReadItems().Count == 1,
+    "手选目录的已有顶层内容没有直接显示。");
+Check(AppPaths.PathsOverlap(customStorage, Path.Combine(customStorage, "Child")),
+    "父子收纳目录重叠没有被识别。");
+Check(!AppPaths.PathsOverlap(customStorage, Path.Combine(logicRoot, "Sibling")),
+    "无关目录被错误判定为重叠。");
+bool rejectedProtectedPath = false;
+try { _ = AppPaths.ValidateCustomStoragePath(logicRoot); }
+catch (InvalidOperationException) { rejectedProtectedPath = true; }
+Check(rejectedProtectedPath, "危险上级目录没有被拒绝。");
+
+var oldStorageState = new AppStateV2
+{
+    Organizers = [new OrganizerDefinition { StorageRelativePath = Path.Combine("Windows", "Legacy-11111111", "Items") }]
+};
+StateStore.Normalize(oldStorageState);
+Check(Path.GetFileName(oldStorageState.Organizers[0].StorageRelativePath).Equals("Items", StringComparison.OrdinalIgnoreCase),
+    "旧版 Items 存储路径被意外迁移。");
+
+TransferOutcome exportOutcome = await new StorageService(customStorage, createIfMissing: false)
+    .ExportToDesktopAsync("Direct storage", null, CancellationToken.None);
+Check(exportOutcome.Status == TransferStatus.Moved && !Directory.Exists(customStorage) &&
+      exportOutcome.DestinationPath is not null && File.Exists(Path.Combine(exportOutcome.DestinationPath, "existing.txt")),
+    "手选目录没有作为整个目录导出并删除原目录。");
+
+string emptyCustomStorage = Path.Combine(logicRoot, "EmptySelectedStorage");
+Directory.CreateDirectory(emptyCustomStorage);
+TransferOutcome emptyExportOutcome = await new StorageService(
+        emptyCustomStorage,
+        createIfMissing: false,
+        exportEmptyDirectory: true)
+    .ExportToDesktopAsync("Empty direct storage", null, CancellationToken.None);
+Check(emptyExportOutcome.Status == TransferStatus.Moved && !Directory.Exists(emptyCustomStorage) &&
+      emptyExportOutcome.DestinationPath is not null && Directory.Exists(emptyExportOutcome.DestinationPath),
+    "空的手选目录没有整体导出到桌面。");
+
+string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "TuckPane.ico");
+string shortcutRoot = Path.Combine(logicRoot, "Shortcut");
+Directory.CreateDirectory(shortcutRoot);
+string shortcutIconPath = Path.Combine(shortcutRoot, "TuckPane.ico");
+File.Copy(iconPath, shortcutIconPath);
+string internetShortcutPath = Path.Combine(shortcutRoot, "Steam.url");
+await File.WriteAllTextAsync(internetShortcutPath, """
+    [InternetShortcut]
+    URL=steam://rungameid/431960
+    IconFile=TuckPane.ico
+    IconIndex=0
+    """);
+IconCacheService.IconSnapshot expectedIcon = IconCacheService.ExtractShellIconPixels(shortcutIconPath);
+IconCacheService.IconSnapshot shortcutIcon = IconCacheService.ExtractShellIconPixels(internetShortcutPath);
+long iconDifference = 0;
+long iconRange = 0;
+for (int index = 0; index < expectedIcon.Pixels.Length; index += 4)
+{
+    if (expectedIcon.Pixels[index + 3] == 0 && shortcutIcon.Pixels[index + 3] == 0) continue;
+    for (int channel = 0; channel < 4; channel++)
+    {
+        iconDifference += Math.Abs(expectedIcon.Pixels[index + channel] - shortcutIcon.Pixels[index + channel]);
+        iconRange += byte.MaxValue;
+    }
+}
+double iconSimilarity = iconRange == 0 ? 0 : 1d - (double)iconDifference / iconRange;
+Check(expectedIcon.Size == shortcutIcon.Size && iconSimilarity >= .95,
+    $"Steam .url 没有使用声明图标，相似度仅 {iconSimilarity:F4}。");
+
 string copyName = OrganizerInteractionMath.CreateCopyName(
     "学习",
     ["学习", "学习 - 副本", "学习 - 副本 (2)"],
@@ -134,4 +251,5 @@ Check(tightPlacement.CompactScale < 1.2 &&
       tightPlacement.Bounds.Height <= tightGridSnapshot.CellHeightPx,
     "极端桌面网格没有优先保持单格占用。");
 
+Directory.Delete(logicRoot, recursive: true);
 Console.WriteLine("TuckPane logic checks: PASS");

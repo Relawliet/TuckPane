@@ -12,6 +12,8 @@
   <data name="GeneralTitle" xml:space="preserve"><value>通用</value></data>
   <data name="StartupTitle" xml:space="preserve"><value>开机时启动 TuckPane</value></data>
   <data name="StartupDescription" xml:space="preserve"><value>静默恢复收纳窗，不显示总控台。</value></data>
+  <data name="CollapseOutsideTitle" xml:space="preserve"><value>点击窗口外自动收缩</value></data>
+  <data name="CollapseOutsideDescription" xml:space="preserve"><value>展开后点击其他位置时自动收起。</value></data>
   <data name="LanguageLabel" xml:space="preserve"><value>语言</value></data>
   <data name="LanguageDescription" xml:space="preserve"><value>切换后立即应用，无需重启。</value></data>
   <data name="LanguageChinese" xml:space="preserve"><value>简体中文</value></data>
@@ -71,6 +73,8 @@
   <data name="DeleteTitleFormat" xml:space="preserve"><value>删除“{0}”？</value></data>
   <data name="DeleteNonEmptyFormat" xml:space="preserve"><value>其中 {0} 将完整导出为桌面文件夹“{1}（已导出）”。</value></data>
   <data name="DeleteEmpty" xml:space="preserve"><value>这是一个空窗口，不会在桌面创建空文件夹。</value></data>
+  <data name="DeleteDirectNonEmptyFormat" xml:space="preserve"><value>保存目录“{0}”及其中 {1} 将移动为桌面文件夹“{2}（已导出）”，原位置随后会被删除。</value></data>
+  <data name="DeleteDirectEmptyFormat" xml:space="preserve"><value>空保存目录“{0}”将移动到桌面上的唯一目录，随后从原位置删除。</value></data>
   <data name="Cancel" xml:space="preserve"><value>取消</value></data>
   <data name="DeleteErrorTitle" xml:space="preserve"><value>无法删除收纳窗</value></data>
   <data name="OpenFolderErrorTitle" xml:space="preserve"><value>无法打开文件夹</value></data>
@@ -133,15 +137,20 @@
   <data name="LegacyInstanceMessage" xml:space="preserve"><value>检测到 TuckPane 或旧版 GlassFolder 仍在运行。请先从托盘菜单退出，再启动 TuckPane；你的收纳内容不会被删除。</value></data>
   <data name="StorageOutsideRoot" xml:space="preserve"><value>收纳目录超出了 TuckPane 数据根目录。</value></data>
   <data name="StorageAbsoluteRequired" xml:space="preserve"><value>自定义保存位置必须是完整的本地路径。</value></data>
+  <data name="StorageProtectedPath" xml:space="preserve"><value>请选择专用子目录，不要选择磁盘、用户主目录、桌面、文档、下载或 TuckPane 数据根目录。</value></data>
+  <data name="StorageFolderMissing" xml:space="preserve"><value>所选保存目录不存在。</value></data>
+  <data name="StoragePathOverlap" xml:space="preserve"><value>所选目录与另一个收纳窗的保存目录重叠。</value></data>
+  <data name="AutomaticStoragePathFormat" xml:space="preserve"><value>自动：{0}\名称-ID</value></data>
   <data name="StorageLocationLabel" xml:space="preserve"><value>保存位置</value></data>
   <data name="ChooseFolder" xml:space="preserve"><value>选择目录</value></data>
   <data name="UseDefaultLocation" xml:space="preserve"><value>恢复默认</value></data>
-  <data name="SelectStorageFolderTitle" xml:space="preserve"><value>选择收纳窗保存位置</value></data>
+  <data name="SelectStorageFolderTitle" xml:space="preserve"><value>选择收纳窗的最终保存目录</value></data>
   <data name="SelectStorageFolderCommit" xml:space="preserve"><value>选择此文件夹</value></data>
   <data name="StorageFolderPickerError" xml:space="preserve"><value>无法选择保存位置</value></data>
   <data name="RecreateStorageErrorTitle" xml:space="preserve"><value>无法重建收纳目录</value></data>
   <data name="MoveToDesktopFailed" xml:space="preserve"><value>无法将项目移动到桌面。</value></data>
   <data name="LanguageErrorTitle" xml:space="preserve"><value>无法切换语言</value></data>
+  <data name="CollapseOutsideErrorTitle" xml:space="preserve"><value>无法更新自动收缩设置</value></data>
   <data name="UnsupportedReparsePathFormat" xml:space="preserve"><value>目录中包含不支持的重解析点：{0}</value></data>
   <data name="CopyVerificationFailed" xml:space="preserve"><value>复制校验失败，源目录与目标临时目录不一致。</value></data>
   <data name="WindowMinimize" xml:space="preserve"><value>最小化</value></data>

@@ -8,13 +8,19 @@ public sealed class StorageService
 {
     private readonly string _itemsRoot;
     private readonly string? _ownedContainerPath;
+    private readonly bool _exportEmptyDirectory;
 
-    public StorageService(string? itemsRoot = null, bool createIfMissing = true, string? ownedContainerPath = null)
+    public StorageService(
+        string? itemsRoot = null,
+        bool createIfMissing = true,
+        string? ownedContainerPath = null,
+        bool exportEmptyDirectory = false)
     {
         _itemsRoot = Path.GetFullPath(itemsRoot ?? AppPaths.ItemsRoot).TrimEnd(Path.DirectorySeparatorChar);
         _ownedContainerPath = string.IsNullOrWhiteSpace(ownedContainerPath)
             ? null
             : Path.GetFullPath(ownedContainerPath).TrimEnd(Path.DirectorySeparatorChar);
+        _exportEmptyDirectory = exportEmptyDirectory;
         if (createIfMissing) Directory.CreateDirectory(_itemsRoot);
     }
 
@@ -71,7 +77,7 @@ public sealed class StorageService
         CancellationToken cancellationToken)
     {
         if (!Directory.Exists(_itemsRoot)) return new(_itemsRoot, null, TransferStatus.Moved, AppStrings.Get("StorageMissingDeleted"));
-        if (!Directory.EnumerateFileSystemEntries(_itemsRoot).Any())
+        if (!_exportEmptyDirectory && !Directory.EnumerateFileSystemEntries(_itemsRoot).Any())
         {
             Directory.Delete(_itemsRoot);
             DeleteEmptyParent();

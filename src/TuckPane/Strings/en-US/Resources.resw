@@ -12,6 +12,8 @@
   <data name="GeneralTitle" xml:space="preserve"><value>General</value></data>
   <data name="StartupTitle" xml:space="preserve"><value>Start TuckPane with Windows</value></data>
   <data name="StartupDescription" xml:space="preserve"><value>Restore organizers silently without opening the console.</value></data>
+  <data name="CollapseOutsideTitle" xml:space="preserve"><value>Collapse when clicking outside</value></data>
+  <data name="CollapseOutsideDescription" xml:space="preserve"><value>Automatically collapse an expanded organizer when you click elsewhere.</value></data>
   <data name="LanguageLabel" xml:space="preserve"><value>Language</value></data>
   <data name="LanguageDescription" xml:space="preserve"><value>Changes apply immediately without restarting.</value></data>
   <data name="LanguageChinese" xml:space="preserve"><value>简体中文</value></data>
@@ -71,6 +73,8 @@
   <data name="DeleteTitleFormat" xml:space="preserve"><value>Delete “{0}”?</value></data>
   <data name="DeleteNonEmptyFormat" xml:space="preserve"><value>Its {0} will be exported to the Desktop folder “{1} (Exported)”.</value></data>
   <data name="DeleteEmpty" xml:space="preserve"><value>This organizer is empty, so no empty Desktop folder will be created.</value></data>
+  <data name="DeleteDirectNonEmptyFormat" xml:space="preserve"><value>The save directory “{0}” and its {1} will be moved to the Desktop folder “{2} (Exported)”, then removed from its original location.</value></data>
+  <data name="DeleteDirectEmptyFormat" xml:space="preserve"><value>The empty save directory “{0}” will be moved to a uniquely named Desktop folder, then removed from its original location.</value></data>
   <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="DeleteErrorTitle" xml:space="preserve"><value>Could not delete organizer</value></data>
   <data name="OpenFolderErrorTitle" xml:space="preserve"><value>Could not open folder</value></data>
@@ -133,15 +137,20 @@
   <data name="LegacyInstanceMessage" xml:space="preserve"><value>TuckPane or an older GlassFolder instance is still running. Exit it from the tray menu, then start TuckPane. Your organizer contents will not be deleted.</value></data>
   <data name="StorageOutsideRoot" xml:space="preserve"><value>The storage path is outside the TuckPane data root.</value></data>
   <data name="StorageAbsoluteRequired" xml:space="preserve"><value>A custom storage location must be a fully qualified local path.</value></data>
+  <data name="StorageProtectedPath" xml:space="preserve"><value>Choose a dedicated subfolder instead of a drive, profile, Desktop, Documents, Downloads, or TuckPane data root.</value></data>
+  <data name="StorageFolderMissing" xml:space="preserve"><value>The selected save directory does not exist.</value></data>
+  <data name="StoragePathOverlap" xml:space="preserve"><value>The selected directory overlaps another organizer's save directory.</value></data>
+  <data name="AutomaticStoragePathFormat" xml:space="preserve"><value>Automatic: {0}\Name-ID</value></data>
   <data name="StorageLocationLabel" xml:space="preserve"><value>Save location</value></data>
   <data name="ChooseFolder" xml:space="preserve"><value>Choose folder</value></data>
   <data name="UseDefaultLocation" xml:space="preserve"><value>Use default</value></data>
-  <data name="SelectStorageFolderTitle" xml:space="preserve"><value>Choose organizer save location</value></data>
+  <data name="SelectStorageFolderTitle" xml:space="preserve"><value>Choose the final organizer save directory</value></data>
   <data name="SelectStorageFolderCommit" xml:space="preserve"><value>Select folder</value></data>
   <data name="StorageFolderPickerError" xml:space="preserve"><value>Could not choose the save location</value></data>
   <data name="RecreateStorageErrorTitle" xml:space="preserve"><value>Could not recreate the storage folder</value></data>
   <data name="MoveToDesktopFailed" xml:space="preserve"><value>Could not move the item to the Desktop.</value></data>
   <data name="LanguageErrorTitle" xml:space="preserve"><value>Could not change language</value></data>
+  <data name="CollapseOutsideErrorTitle" xml:space="preserve"><value>Could not update automatic collapse</value></data>
   <data name="UnsupportedReparsePathFormat" xml:space="preserve"><value>The directory contains an unsupported reparse point: {0}</value></data>
   <data name="CopyVerificationFailed" xml:space="preserve"><value>Copy verification failed because the source and temporary destination differ.</value></data>
   <data name="WindowMinimize" xml:space="preserve"><value>Minimize</value></data>

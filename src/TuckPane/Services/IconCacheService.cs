@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Security.Cryptography;
 using System.Text;
+using System.Globalization;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
@@ -13,24 +14,13 @@ public sealed class IconCacheService
 {
     private const int JumboSize = 256;
     private const int FallbackSize = 32;
-    private const string CacheVersion = "v2-256";
+    private const string CacheVersion = "v3-url-icon";
     private readonly Dictionary<string, BitmapImage> _memoryCache = new(StringComparer.OrdinalIgnoreCase);
 
     internal static IntPtr CreateDragBitmap(string path, int size)
     {
         if (size <= 0) throw new ArgumentOutOfRangeException(nameof(size));
-        IntPtr icon;
-        bool destroyIcon;
-        if (TryGetJumboIcon(path, out IntPtr jumboIcon))
-        {
-            icon = jumboIcon;
-            destroyIcon = true;
-        }
-        else
-        {
-            icon = GetFallbackIcon(path);
-            destroyIcon = true;
-        }
+        IntPtr icon = GetPreferredIcon(path, size, out _);
 
         try
         {
@@ -40,7 +30,7 @@ public sealed class IconCacheService
         }
         finally
         {
-            if (destroyIcon) _ = NativeMethods.DestroyIcon(icon);
+            _ = NativeMethods.DestroyIcon(icon);
         }
     }
 
@@ -107,29 +97,74 @@ public sealed class IconCacheService
         }
     }
 
-    private static IconSnapshot ExtractShellIconPixels(string path)
+    internal static IconSnapshot ExtractShellIconPixels(string path)
     {
-        if (TryGetJumboIcon(path, out IntPtr jumboIcon))
-        {
-            try
-            {
-                return new(DrawIconPixels(jumboIcon, JumboSize), JumboSize);
-            }
-            finally
-            {
-                _ = NativeMethods.DestroyIcon(jumboIcon);
-            }
-        }
-
-        IntPtr fallbackIcon = GetFallbackIcon(path);
+        IntPtr icon = GetPreferredIcon(path, JumboSize, out int sourceSize);
         try
         {
-            return new(DrawIconPixels(fallbackIcon, FallbackSize), FallbackSize);
+            return new(DrawIconPixels(icon, sourceSize), sourceSize);
         }
         finally
         {
-            _ = NativeMethods.DestroyIcon(fallbackIcon);
+            _ = NativeMethods.DestroyIcon(icon);
         }
+    }
+
+    private static IntPtr GetPreferredIcon(string path, int requestedSize, out int sourceSize)
+    {
+        if (TryGetInternetShortcutIcon(path, requestedSize, out IntPtr internetShortcutIcon))
+        {
+            sourceSize = requestedSize;
+            return internetShortcutIcon;
+        }
+        if (TryGetJumboIcon(path, out IntPtr jumboIcon))
+        {
+            sourceSize = JumboSize;
+            return jumboIcon;
+        }
+        sourceSize = FallbackSize;
+        return GetFallbackIcon(path);
+    }
+
+    private static bool TryGetInternetShortcutIcon(string path, int size, out IntPtr icon)
+    {
+        icon = IntPtr.Zero;
+        if (!Path.GetExtension(path).Equals(".url", StringComparison.OrdinalIgnoreCase) || !File.Exists(path)) return false;
+        try
+        {
+            string iconFile = ReadInternetShortcutValue(path, "IconFile");
+            if (string.IsNullOrWhiteSpace(iconFile)) return false;
+            iconFile = Environment.ExpandEnvironmentVariables(iconFile.Trim());
+            if (!Path.IsPathFullyQualified(iconFile))
+                iconFile = Path.Combine(Path.GetDirectoryName(path)!, iconFile);
+            iconFile = Path.GetFullPath(iconFile);
+            if (iconFile.StartsWith(@"\\", StringComparison.Ordinal) || !File.Exists(iconFile)) return false;
+
+            int iconIndex = int.TryParse(
+                ReadInternetShortcutValue(path, "IconIndex"),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out int parsedIndex)
+                ? parsedIndex
+                : 0;
+            int result = NativeMethods.SHDefExtractIcon(iconFile, iconIndex, 0, out icon, out IntPtr smallIcon, (uint)size);
+            if (smallIcon != IntPtr.Zero) _ = NativeMethods.DestroyIcon(smallIcon);
+            if (result == 0 && icon != IntPtr.Zero) return true;
+            if (icon != IntPtr.Zero) _ = NativeMethods.DestroyIcon(icon);
+            icon = IntPtr.Zero;
+        }
+        catch
+        {
+            icon = IntPtr.Zero;
+        }
+        return false;
+    }
+
+    private static string ReadInternetShortcutValue(string path, string key)
+    {
+        var value = new StringBuilder(32768);
+        _ = NativeMethods.GetPrivateProfileString("InternetShortcut", key, string.Empty, value, (uint)value.Capacity, path);
+        return value.ToString();
     }
 
     private static bool TryGetJumboIcon(string path, out IntPtr icon)
@@ -282,5 +317,5 @@ public sealed class IconCacheService
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
-    private sealed record IconSnapshot(byte[] Pixels, int Size);
+    internal sealed record IconSnapshot(byte[] Pixels, int Size);
 }

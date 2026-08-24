@@ -557,6 +557,24 @@ internal static class NativeMethods
     [DllImport("shell32.dll", EntryPoint = "SHGetFileInfoW", CharSet = CharSet.Unicode)]
     internal static extern UIntPtr SHGetFileInfo(string path, uint attributes, ref SHFILEINFO info, uint infoSize, uint flags);
 
+    [DllImport("shell32.dll", EntryPoint = "SHDefExtractIconW", CharSet = CharSet.Unicode)]
+    internal static extern int SHDefExtractIcon(
+        string iconFile,
+        int iconIndex,
+        uint flags,
+        out IntPtr largeIcon,
+        out IntPtr smallIcon,
+        uint iconSize);
+
+    [DllImport("kernel32.dll", EntryPoint = "GetPrivateProfileStringW", CharSet = CharSet.Unicode)]
+    internal static extern uint GetPrivateProfileString(
+        string section,
+        string key,
+        string defaultValue,
+        StringBuilder value,
+        uint size,
+        string filePath);
+
     [DllImport("shell32.dll")]
     internal static extern int SHGetImageList(int imageList, ref Guid interfaceId, [MarshalAs(UnmanagedType.Interface)] out IImageList list);
 

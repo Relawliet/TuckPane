@@ -3,10 +3,14 @@ param(
     [Parameter(Mandatory)]
     [string]$ExecutablePath,
 
-    [switch]$CheckExpandedOrganizer
+    [switch]$CheckExpandedOrganizer,
+
+    [ValidateSet('None', 'Disabled', 'Enabled')]
+    [string]$OutsideClickMode = 'None'
 )
 
 $ErrorActionPreference = 'Stop'
+$expandOrganizer = $CheckExpandedOrganizer.IsPresent -or $OutsideClickMode -ne 'None'
 $resolvedExecutable = [IO.Path]::GetFullPath($ExecutablePath)
 if (-not (Test-Path -LiteralPath $resolvedExecutable -PathType Leaf)) {
     throw "TuckPane executable was not found: $resolvedExecutable"
@@ -33,6 +37,10 @@ public sealed class TuckPaneWindowRecord
     public long ExtendedStyle { get; set; }
     public double WidthDip { get; set; }
     public double HeightDip { get; set; }
+    public int Left { get; set; }
+    public int Top { get; set; }
+    public int Right { get; set; }
+    public int Bottom { get; set; }
     public string Title { get; set; } = "";
 }
 
@@ -51,6 +59,13 @@ public static class TuckPaneTaskbarProbe
         public int Top;
         public int Right;
         public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Point
+    {
+        public int X;
+        public int Y;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -89,6 +104,15 @@ public static class TuckPaneTaskbarProbe
     [DllImport("user32.dll")]
     private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 
+    [DllImport("user32.dll")]
+    private static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll")]
+    private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extraInfo);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr WindowFromPoint(Point point);
+
     [DllImport("shell32.dll")]
     private static extern int Shell_NotifyIconGetRect(ref NotifyIconIdentifier identifier, out Rect iconLocation);
 
@@ -112,6 +136,10 @@ public static class TuckPaneTaskbarProbe
                 ExtendedStyle = GetWindowLongPtr(window, GWL_EXSTYLE).ToInt64(),
                 WidthDip = (bounds.Right - bounds.Left) * 96d / dpi,
                 HeightDip = (bounds.Bottom - bounds.Top) * 96d / dpi,
+                Left = bounds.Left,
+                Top = bounds.Top,
+                Right = bounds.Right,
+                Bottom = bounds.Bottom,
                 Title = title.ToString()
             });
             return true;
@@ -139,6 +167,15 @@ public static class TuckPaneTaskbarProbe
 
     public static bool Close(long handle) =>
         PostMessage(new IntPtr(handle), WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+
+    public static void LeftClick(int x, int y)
+    {
+        SetCursorPos(x, y);
+        mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
+        mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
+    }
+
+    public static long WindowAt(int x, int y) => WindowFromPoint(new Point { X = x, Y = y }).ToInt64();
 }
 '@
 }
@@ -184,6 +221,7 @@ function Get-TuckPaneTaskbarButtons {
     $buttons = $taskbar.FindAll(
         [Windows.Automation.TreeScope]::Descendants,
         [Windows.Automation.Condition]::TrueCondition)
+    if ($buttons.Count -eq 0) { return @() }
     return @(0..($buttons.Count - 1) | ForEach-Object {
         $button = $buttons.Item($_)
         if ($button.Current.ClassName -eq 'Taskbar.TaskListButtonAutomationPeer' -and
@@ -201,18 +239,19 @@ if (-not $testRoot.StartsWith($tempBase, [StringComparison]::OrdinalIgnoreCase))
 
 [IO.Directory]::CreateDirectory($testRoot) | Out-Null
 
-if ($CheckExpandedOrganizer) {
+if ($expandOrganizer) {
     $localRoot = Join-Path $testRoot 'LocalAppData\TuckPane'
     $userRoot = Join-Path $testRoot 'UserProfile\TuckPane'
     [IO.Directory]::CreateDirectory($localRoot) | Out-Null
     [IO.Directory]::CreateDirectory((Join-Path $userRoot 'Items')) | Out-Null
 
     $state = @{
-        SchemaVersion = 2
+        SchemaVersion = 3
         GlobalSettings = @{
             Theme = 0
             StartWithWindows = $false
             Language = 0
+            CollapseOnOutsideClick = $OutsideClickMode -eq 'Enabled'
         }
         Organizers = @(
             @{
@@ -243,9 +282,10 @@ if ($CheckExpandedOrganizer) {
 
 $primary = $null
 $secondary = $null
+$clickTargetForm = $null
 
 try {
-    $primary = Start-TuckPane $resolvedExecutable $testRoot $CheckExpandedOrganizer.IsPresent
+    $primary = Start-TuckPane $resolvedExecutable $testRoot $expandOrganizer
     $startupClock = [Diagnostics.Stopwatch]::StartNew()
     $firstWindowSeenAt = $null
     $expandedWindowSeenAt = $null
@@ -271,7 +311,7 @@ try {
         if ($windows.Count -gt 0 -and $null -eq $firstWindowSeenAt) {
             $firstWindowSeenAt = $startupClock.Elapsed
         }
-        if ($CheckExpandedOrganizer -and $null -eq $expandedWindowSeenAt) {
+        if ($expandOrganizer -and $null -eq $expandedWindowSeenAt) {
             $expandedWindow = @($windows | Where-Object {
                 $_.Visible -and $_.WidthDip -gt 180 -and $_.HeightDip -gt 160
             }) | Select-Object -First 1
@@ -282,7 +322,7 @@ try {
 
         $startupTaskbarWindow = @(Get-TaskbarCandidates $primary) | Select-Object -First 1
         $startupTaskbarButton = @(Get-TuckPaneTaskbarButtons) | Select-Object -First 1
-        if ($CheckExpandedOrganizer) {
+        if ($expandOrganizer) {
             if ($null -ne $expandedWindowSeenAt -and ($startupClock.Elapsed - $expandedWindowSeenAt) -ge [TimeSpan]::FromSeconds(1)) { break }
         }
         elseif ($null -ne $firstWindowSeenAt -and ($startupClock.Elapsed - $firstWindowSeenAt) -ge [TimeSpan]::FromSeconds(2)) {
@@ -294,13 +334,13 @@ try {
     if ($null -eq $firstWindowSeenAt) {
         throw 'TuckPane did not create a top-level window within 15 seconds.'
     }
-    if ($CheckExpandedOrganizer -and $null -eq $expandedWindowSeenAt -and $null -eq $startupTaskbarButton) {
+    if ($expandOrganizer -and $null -eq $expandedWindowSeenAt -and $null -eq $startupTaskbarButton) {
         throw 'TuckPane did not expand the isolated organizer within 15 seconds.'
     }
     $startupTaskbarButton = @(Get-TuckPaneTaskbarButtons) | Select-Object -First 1
     $startupTaskbarWindow = @(Get-TaskbarCandidates $primary) | Select-Object -First 1
     if ($null -ne $startupTaskbarButton) {
-        $phase = if ($CheckExpandedOrganizer) { 'Expanding an organizer' } else { 'First launch' }
+        $phase = if ($expandOrganizer) { 'Expanding an organizer' } else { 'First launch' }
         $windowDetails = if ($null -ne $startupTaskbarWindow) { Format-Window $startupTaskbarWindow } else { 'no taskbar-eligible HWND found' }
         throw "$phase exposed taskbar button '$startupTaskbarButton': $windowDetails. Observed states: $($observedWindowStates -join ' -> ')"
     }
@@ -308,26 +348,104 @@ try {
         throw 'TuckPane did not register its system tray icon.'
     }
 
+    if ($OutsideClickMode -ne 'None') {
+        Add-Type -AssemblyName System.Windows.Forms
+        $expandedWindow = @(Get-TuckPaneWindows $primary | Where-Object {
+            $_.Visible -and $_.WidthDip -gt 180 -and $_.HeightDip -gt 160
+        }) | Select-Object -First 1
+        if ($null -eq $expandedWindow) { throw 'No expanded organizer was available for the outside-click check.' }
+
+        $workingArea = [Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+        $targetWidth = 280
+        $targetHeight = 150
+        $locations = @(
+            [Drawing.Point]::new($workingArea.Left + 12, $workingArea.Top + 12),
+            [Drawing.Point]::new($workingArea.Right - $targetWidth - 12, $workingArea.Top + 12),
+            [Drawing.Point]::new($workingArea.Left + 12, $workingArea.Bottom - $targetHeight - 12),
+            [Drawing.Point]::new($workingArea.Right - $targetWidth - 12, $workingArea.Bottom - $targetHeight - 12)
+        )
+        $targetLocation = $locations | Where-Object {
+            $centerX = $_.X + [int]($targetWidth / 2)
+            $centerY = $_.Y + [int]($targetHeight / 2)
+            $centerX -lt $expandedWindow.Left -or $centerX -ge $expandedWindow.Right -or
+                $centerY -lt $expandedWindow.Top -or $centerY -ge $expandedWindow.Bottom
+        } | Select-Object -First 1
+        if ($null -eq $targetLocation) { throw 'No outside-click target location was available.' }
+
+        $clickTargetForm = [Windows.Forms.Form]::new()
+        $clickTargetForm.Text = 'TuckPane outside-click target'
+        $clickTargetForm.StartPosition = 'Manual'
+        $clickTargetForm.Bounds = [Drawing.Rectangle]::new($targetLocation.X, $targetLocation.Y, $targetWidth, $targetHeight)
+        $clickTargetForm.TopMost = $true
+        $targetButton = [Windows.Forms.Button]::new()
+        $targetButton.Text = 'Click target'
+        $targetButton.Dock = 'Fill'
+        $targetButton.Tag = 'pending'
+        $targetButton.Add_Click({ $this.Tag = 'clicked' })
+        $clickTargetForm.Controls.Add($targetButton)
+        $clickTargetForm.Show()
+        $clickTargetForm.Activate()
+        $clickTargetForm.BringToFront()
+        foreach ($attempt in 1..10) {
+            [Windows.Forms.Application]::DoEvents()
+            Start-Sleep -Milliseconds 20
+        }
+        $targetPoint = $targetButton.PointToScreen([Drawing.Point]::new([int]($targetButton.Width / 2), [int]($targetButton.Height / 2)))
+        $clickTargetForm.Activate()
+        $clickTargetForm.BringToFront()
+        [Windows.Forms.Application]::DoEvents()
+        $windowAtTarget = [TuckPaneTaskbarProbe]::WindowAt($targetPoint.X, $targetPoint.Y)
+        if ($windowAtTarget -ne $targetButton.Handle.ToInt64()) {
+            throw "The click target was obscured. Expected HWND 0x$('{0:X}' -f $targetButton.Handle.ToInt64()), found 0x$('{0:X}' -f $windowAtTarget)."
+        }
+        [TuckPaneTaskbarProbe]::LeftClick($targetPoint.X, $targetPoint.Y)
+
+        $outsideClock = [Diagnostics.Stopwatch]::StartNew()
+        $afterClick = $expandedWindow
+        while ($outsideClock.Elapsed -lt [TimeSpan]::FromSeconds(3)) {
+            [Windows.Forms.Application]::DoEvents()
+            $afterClick = @(Get-TuckPaneWindows $primary | Where-Object Handle -eq $expandedWindow.Handle) | Select-Object -First 1
+            $isCollapsed = $null -ne $afterClick -and ($afterClick.WidthDip -le 180 -or $afterClick.HeightDip -le 160)
+            if ($targetButton.Tag -eq 'clicked' -and
+                (($OutsideClickMode -eq 'Enabled' -and $isCollapsed) -or
+                 ($OutsideClickMode -eq 'Disabled' -and -not $isCollapsed -and $outsideClock.ElapsedMilliseconds -ge 500))) {
+                break
+            }
+            Start-Sleep -Milliseconds 25
+        }
+        if ($targetButton.Tag -ne 'clicked') { throw 'The outside click was swallowed before reaching its target.' }
+        $collapsedAfterClick = $null -ne $afterClick -and ($afterClick.WidthDip -le 180 -or $afterClick.HeightDip -le 160)
+        if ($OutsideClickMode -eq 'Enabled' -and -not $collapsedAfterClick) {
+            throw 'The organizer did not collapse when outside-click behavior was enabled.'
+        }
+        if ($OutsideClickMode -eq 'Disabled' -and $collapsedAfterClick) {
+            throw 'The organizer collapsed while outside-click behavior was disabled.'
+        }
+        $clickTargetForm.Close()
+        $clickTargetForm.Dispose()
+        $clickTargetForm = $null
+    }
+
     $startupWindowHandles = @(Get-TuckPaneWindows $primary | Where-Object Visible | ForEach-Object Handle)
 
-    $secondary = Start-TuckPane $resolvedExecutable $testRoot $CheckExpandedOrganizer.IsPresent
+    $secondary = Start-TuckPane $resolvedExecutable $testRoot $expandOrganizer
     if (-not $secondary.WaitForExit(5000)) {
         throw 'The secondary launch did not exit after signaling the primary instance.'
     }
 
     $openClock = [Diagnostics.Stopwatch]::StartNew()
     $consoleWindow = $null
-    $consoleTaskbarButton = $null
     while ($openClock.Elapsed -lt [TimeSpan]::FromSeconds(5)) {
         $consoleWindow = @(Get-TuckPaneWindows $primary | Where-Object {
-            $_.Visible -and $_.Handle -notin $startupWindowHandles
+            $_.Handle -notin $startupWindowHandles -and [TuckPaneTaskbarProbe]::IsTaskbarCandidate($_)
         }) | Select-Object -First 1
-        $consoleTaskbarButton = @(Get-TuckPaneTaskbarButtons) | Select-Object -First 1
-        if ($null -ne $consoleWindow -and $null -ne $consoleTaskbarButton) { break }
+        if ($null -ne $consoleWindow) { break }
         Start-Sleep -Milliseconds 25
     }
-    if ($null -eq $consoleWindow -or $null -eq $consoleTaskbarButton) {
-        throw 'The secondary launch did not open the existing console window.'
+    if ($null -eq $consoleWindow) {
+        $windowDetails = @((Get-TuckPaneWindows $primary) | ForEach-Object { Format-Window $_ }) -join '; '
+        $taskbarDetails = @(Get-TuckPaneTaskbarButtons) -join '; '
+        throw "The secondary launch did not expose a taskbar-eligible console window. Windows: $windowDetails. Taskbar: $taskbarDetails"
     }
 
     if (-not [TuckPaneTaskbarProbe]::Close($consoleWindow.Handle)) {
@@ -335,20 +453,31 @@ try {
     }
 
     $closeClock = [Diagnostics.Stopwatch]::StartNew()
-    while ($closeClock.Elapsed -lt [TimeSpan]::FromSeconds(5) -and (Get-TuckPaneTaskbarButtons).Count -gt 0) {
+    while ($closeClock.Elapsed -lt [TimeSpan]::FromSeconds(5) -and
+           ((Get-TuckPaneTaskbarButtons).Count -gt 0 -or (Get-TaskbarCandidates $primary).Count -gt 0)) {
         Start-Sleep -Milliseconds 25
     }
     if ($primary.HasExited) {
         throw 'Closing the console terminated TuckPane instead of hiding it to the tray.'
     }
-    if ((Get-TuckPaneTaskbarButtons).Count -gt 0) {
+    if ((Get-TuckPaneTaskbarButtons).Count -gt 0 -or (Get-TaskbarCandidates $primary).Count -gt 0) {
         throw 'Closing the console left a taskbar window visible.'
     }
 
-    $scope = if ($CheckExpandedOrganizer) { 'startup and organizer expansion' } else { 'tray startup' }
+    $scope = if ($OutsideClickMode -ne 'None') {
+        "outside click ($($OutsideClickMode.ToLowerInvariant()))"
+    } elseif ($CheckExpandedOrganizer) {
+        'startup and organizer expansion'
+    } else {
+        'tray startup'
+    }
     Write-Output "TuckPane $scope check: PASS"
 }
 finally {
+    if ($clickTargetForm) {
+        $clickTargetForm.Close()
+        $clickTargetForm.Dispose()
+    }
     if ($secondary -and -not $secondary.HasExited) {
         $secondary.Kill($true)
         $secondary.WaitForExit(5000) | Out-Null
