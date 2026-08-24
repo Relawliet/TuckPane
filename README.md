@@ -4,6 +4,14 @@
 
 TuckPane is a desktop file organizer for Windows 11 x64. It keeps real files and folders inside compact desktop panes that expand when needed and stay out of the way the rest of the time.
 
+## Demo
+
+<p align="center">
+  <img src="docs/images/demo-expand-collapse.gif" alt="A TuckPane organizer expanding and collapsing" width="420">
+  <img src="docs/images/demo-file-reorder.gif" alt="Files being reordered inside a TuckPane organizer" width="420">
+  <br><sub>Left: expand and collapse a pane. Right: drag files to rearrange them inside a pane.</sub>
+</p>
+
 ## Screenshots
 
 <p align="center">

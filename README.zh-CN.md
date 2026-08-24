@@ -4,6 +4,14 @@
 
 TuckPane 是一款 Windows 11 x64 桌面文件收纳工具。它把真实文件和文件夹集中到可收起的桌面窗口中，需要时展开，平时尽量少占用桌面空间。
 
+## 动态演示
+
+<p align="center">
+  <img src="docs/images/demo-expand-collapse.gif" alt="TuckPane 收纳窗展开和收缩演示" width="420">
+  <img src="docs/images/demo-file-reorder.gif" alt="在 TuckPane 收纳窗内调整文件位置" width="420">
+  <br><sub>左：展开和收缩收纳窗。右：拖动文件，在收纳窗内调整位置。</sub>
+</p>
+
 ## 界面展示
 
 <p align="center">
