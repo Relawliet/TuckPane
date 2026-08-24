@@ -88,8 +88,7 @@ public sealed class AppHost : IDisposable
         NativeMethods.RECT bounds;
         if (draft.PlacementMode == OrganizerPlacementMode.Positioned)
         {
-            draft.CompactScale = OrganizerLimits.PositionedCompactScale;
-            DesktopGridPlacement? placement = FindPositionedPlacement(primary, desiredCenter: null, excludeId: id);
+            DesktopGridPlacement? placement = FindPositionedPlacement(primary, desiredCenter: null, excludeId: id, draft.CompactScale);
             if (placement is null) throw new InvalidOperationException(AppStrings.Get("NoPrimaryGridError"));
             bounds = placement.Bounds;
         }
@@ -150,10 +149,6 @@ public sealed class AppHost : IDisposable
         edited.PlacementMode = current.PlacementMode == OrganizerPlacementMode.Floating
             ? OrganizerPlacementMode.Positioned
             : OrganizerPlacementMode.Floating;
-        if (edited.PlacementMode == OrganizerPlacementMode.Positioned)
-        {
-            edited.CompactScale = OrganizerLimits.PositionedCompactScale;
-        }
 
         string? error = ApplyOrganizerRuntime(
             edited,
@@ -190,7 +185,11 @@ public sealed class AppHost : IDisposable
         StateStore.Normalize(State);
         if (_windows.TryGetValue(current.Id, out MainWindow? window))
         {
-            if (previousMode != OrganizerPlacementMode.Positioned && current.PlacementMode == OrganizerPlacementMode.Positioned)
+            bool enteringPositioned = previousMode != OrganizerPlacementMode.Positioned &&
+                current.PlacementMode == OrganizerPlacementMode.Positioned;
+            bool resizingPositioned = current.PlacementMode == OrganizerPlacementMode.Positioned &&
+                (changes & OrganizerVisualChange.CompactScale) != 0;
+            if (enteringPositioned || resizingPositioned)
             {
                 NativeMethods.RECT currentBounds = window.CompactBounds;
                 var center = new NativeMethods.POINT
@@ -199,7 +198,7 @@ public sealed class AppHost : IDisposable
                     Y = currentBounds.Top + currentBounds.Height / 2
                 };
                 DisplayInfo display = DisplayPlacementService.ForBounds(currentBounds);
-                DesktopGridPlacement? placement = FindPositionedPlacement(display, center, current.Id);
+                DesktopGridPlacement? placement = FindPositionedPlacement(display, center, current.Id, current.CompactScale);
                 if (placement is null)
                 {
                     current.PlacementMode = previousMode;
@@ -228,7 +227,7 @@ public sealed class AppHost : IDisposable
                     Y = currentBounds.Top + currentBounds.Height / 2
                 };
                 DisplayInfo display = DisplayPlacementService.ForBounds(currentBounds);
-                DesktopGridPlacement? placement = FindPositionedPlacement(display, center, current.Id);
+                DesktopGridPlacement? placement = FindPositionedPlacement(display, center, current.Id, current.CompactScale);
                 if (placement is not null)
                 {
                     current.Position = DisplayPlacementService.Capture(placement.Bounds);
@@ -247,7 +246,8 @@ public sealed class AppHost : IDisposable
             X = desiredBounds.Left + desiredBounds.Width / 2,
             Y = desiredBounds.Top + desiredBounds.Height / 2
         };
-        return FindPositionedPlacement(display, center, organizerId);
+        double compactScale = State.Organizers.First(item => item.Id == organizerId).CompactScale;
+        return FindPositionedPlacement(display, center, organizerId, compactScale);
     }
 
     internal DesktopGridPlacement? FindCurrentPositionedPlacement(Guid organizerId, NativeMethods.RECT currentBounds)
@@ -258,7 +258,8 @@ public sealed class AppHost : IDisposable
             X = currentBounds.Left + currentBounds.Width / 2,
             Y = currentBounds.Top + currentBounds.Height / 2
         };
-        return FindPositionedPlacement(display, center, organizerId);
+        double compactScale = State.Organizers.First(item => item.Id == organizerId).CompactScale;
+        return FindPositionedPlacement(display, center, organizerId, compactScale);
     }
 
     internal DesktopGridPlacement? RestoreLockedPositionedBounds(Guid organizerId)
@@ -395,7 +396,11 @@ public sealed class AppHost : IDisposable
         Console.ShowTransparencyNotice();
     }
 
-    private DesktopGridPlacement? FindPositionedPlacement(DisplayInfo display, NativeMethods.POINT? desiredCenter, Guid excludeId)
+    private DesktopGridPlacement? FindPositionedPlacement(
+        DisplayInfo display,
+        NativeMethods.POINT? desiredCenter,
+        Guid excludeId,
+        double compactScale)
     {
         DesktopGridSnapshot snapshot = ReadGridSnapshot(display);
         NativeMethods.RECT[] occupied = _windows.Values
@@ -403,7 +408,7 @@ public sealed class AppHost : IDisposable
             .Where(window => State.Organizers.First(item => item.Id == window.OrganizerId).PlacementMode == OrganizerPlacementMode.Positioned)
             .Select(window => window.CompactBounds)
             .ToArray();
-        return DesktopGridService.Find(snapshot, occupied, desiredCenter);
+        return DesktopGridService.Find(snapshot, occupied, desiredCenter, compactScale);
     }
 
     private bool NormalizePositionedPlacementsOnStartup()
@@ -425,7 +430,9 @@ public sealed class AppHost : IDisposable
                 continue;
             }
             DesktopGridSnapshot snapshot = ReadGridSnapshot(display);
-            double scale = DesktopGridService.CalculatePositionedCompactScale(snapshot);
+            double scale = Math.Min(
+                organizer.CompactScale,
+                DesktopGridService.CalculatePositionedCompactScale(snapshot));
             (int width, int height, _) = DesktopGridService.CalculatePositionedWindowSize(snapshot, scale);
             NativeMethods.RECT desired = DisplayPlacementService.RestoreToDisplay(organizer.Position, display, width, height);
             var center = new NativeMethods.POINT
@@ -433,7 +440,7 @@ public sealed class AppHost : IDisposable
                 X = desired.Left + desired.Width / 2,
                 Y = desired.Top + desired.Height / 2
             };
-            DesktopGridPlacement? placement = DesktopGridService.Find(snapshot, occupied, center);
+            DesktopGridPlacement? placement = DesktopGridService.Find(snapshot, occupied, center, organizer.CompactScale);
             if (placement is null)
             {
                 occupied.Add(desired);
