@@ -79,8 +79,17 @@ public sealed class AppHost : IDisposable
         }
         else
         {
+            string validatedParent = AppPaths.ValidateCustomStoragePath(storageParentPath);
             draft.StorageRelativePath = string.Empty;
-            draft.StorageAbsolutePath = AppPaths.CreateStorageAbsolutePath(storageParentPath, draft.Name, id);
+            draft.StorageAbsolutePath = AppPaths.CreateStorageAbsolutePath(validatedParent, draft.Name, id);
+        }
+        foreach (OrganizerDefinition organizer in State.Organizers)
+        {
+            if (AppPaths.PathsOverlap(AppPaths.ResolveStoragePath(draft), AppPaths.ResolveStoragePath(organizer)))
+            {
+                draft.StorageAbsolutePath = null;
+                throw new InvalidOperationException(AppStrings.Get("StoragePathOverlap"));
+            }
         }
 
         DisplayInfo primary = DisplayPlacementService.GetDisplays().FirstOrDefault(display => display.Monitor.Left == 0 && display.Monitor.Top == 0)
@@ -283,7 +292,8 @@ public sealed class AppHost : IDisposable
         var storage = new StorageService(
             AppPaths.ResolveStoragePath(definition),
             createIfMissing: false,
-            ownedContainerPath: AppPaths.GetOwnedStorageContainer(definition));
+            ownedContainerPath: AppPaths.GetOwnedStorageContainer(definition),
+            exportEmptyDirectory: !string.IsNullOrWhiteSpace(definition.StorageAbsolutePath));
         TransferOutcome outcome = await TransferQueue.RunAsync(token => storage.ExportToDesktopAsync(definition.Name, null, token));
         if (outcome.Status != TransferStatus.Moved) return outcome;
 

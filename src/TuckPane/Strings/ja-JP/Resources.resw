@@ -146,6 +146,11 @@
   <data name="CollapseOutsideTitle" xml:space="preserve"><value>ウィンドウ外のクリックで収納</value></data>
   <data name="CollapseOutsideDescription" xml:space="preserve"><value>展開後に別の場所をクリックすると自動的に収納します。</value></data>
   <data name="CollapseOutsideErrorTitle" xml:space="preserve"><value>自動収納の設定を更新できません</value></data>
+  <data name="StorageProtectedPath" xml:space="preserve"><value>ドライブ、ユーザープロファイル、デスクトップ、ドキュメント、ダウンロード、TuckPane データルートではなく専用のサブフォルダーを選択してください。</value></data>
+  <data name="StorageFolderMissing" xml:space="preserve"><value>選択した保存先フォルダーが存在しません。</value></data>
+  <data name="StoragePathOverlap" xml:space="preserve"><value>選択したフォルダーは別の収納ウィンドウの保存先と重複しています。</value></data>
+  <data name="DeleteDirectNonEmptyFormat" xml:space="preserve"><value>保存先「{0}」とその中の{1}をデスクトップの「{2}（書き出し）」へ移動し、元の場所から削除します。</value></data>
+  <data name="DeleteDirectEmptyFormat" xml:space="preserve"><value>空の保存先「{0}」をデスクトップの一意なフォルダーへ移動し、元の場所から削除します。</value></data>
   <data name="UnsupportedReparsePathFormat" xml:space="preserve"><value>ディレクトリに未対応の再解析ポイントがあります：{0}</value></data>
   <data name="CopyVerificationFailed" xml:space="preserve"><value>元のディレクトリと一時コピーが一致しないため、検証に失敗しました。</value></data>
   <data name="WindowMinimize" xml:space="preserve"><value>最小化</value></data>

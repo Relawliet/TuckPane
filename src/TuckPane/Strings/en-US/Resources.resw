@@ -146,6 +146,11 @@
   <data name="CollapseOutsideTitle" xml:space="preserve"><value>Collapse when clicking outside</value></data>
   <data name="CollapseOutsideDescription" xml:space="preserve"><value>Automatically collapse an expanded organizer when you click elsewhere.</value></data>
   <data name="CollapseOutsideErrorTitle" xml:space="preserve"><value>Could not update automatic collapse</value></data>
+  <data name="StorageProtectedPath" xml:space="preserve"><value>Choose a dedicated subfolder instead of a drive, profile, Desktop, Documents, Downloads, or TuckPane data root.</value></data>
+  <data name="StorageFolderMissing" xml:space="preserve"><value>The selected save directory does not exist.</value></data>
+  <data name="StoragePathOverlap" xml:space="preserve"><value>The selected directory overlaps another organizer's save directory.</value></data>
+  <data name="DeleteDirectNonEmptyFormat" xml:space="preserve"><value>The save directory “{0}” and its {1} will be moved to the Desktop folder “{2} (Exported)”, then removed from its original location.</value></data>
+  <data name="DeleteDirectEmptyFormat" xml:space="preserve"><value>The empty save directory “{0}” will be moved to a uniquely named Desktop folder, then removed from its original location.</value></data>
   <data name="UnsupportedReparsePathFormat" xml:space="preserve"><value>The directory contains an unsupported reparse point: {0}</value></data>
   <data name="CopyVerificationFailed" xml:space="preserve"><value>Copy verification failed because the source and temporary destination differ.</value></data>
   <data name="WindowMinimize" xml:space="preserve"><value>Minimize</value></data>

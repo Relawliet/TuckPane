@@ -679,7 +679,7 @@ public sealed partial class ConsoleWindow : Window
             if (Directory.Exists(suggested)) picker.SuggestedStartFolder = suggested;
             PickFolderResult? result = await picker.PickSingleFolderAsync();
             if (result is null || string.IsNullOrWhiteSpace(result.Path)) return;
-            _addStorageParentPath = Path.GetFullPath(result.Path);
+            _addStorageParentPath = AppPaths.ValidateCustomStoragePath(result.Path);
             UpdateAddStoragePath();
         }
         catch (Exception ex)
@@ -945,13 +945,21 @@ public sealed partial class ConsoleWindow : Window
         if (_selectedId is not Guid id) return;
         OrganizerDefinition definition = _host.State.Organizers.First(item => item.Id == id);
         MainWindow? window = _host.Windows.FirstOrDefault(item => item.OrganizerId == id);
+        bool directStorage = !string.IsNullOrWhiteSpace(definition.StorageAbsolutePath);
+        string directPath = directStorage
+            ? AppPaths.GetOwnedStorageContainer(definition) ?? AppPaths.ResolveStoragePath(definition)
+            : string.Empty;
         var dialog = new ContentDialog
         {
             XamlRoot = ConsoleRoot.XamlRoot,
             Title = AppStrings.Format("DeleteTitleFormat", definition.Name),
             Content = window?.FileCount > 0
-                ? AppStrings.Format("DeleteNonEmptyFormat", AppStrings.FormatItemCount(window.FileCount), definition.Name)
-                : AppStrings.Get("DeleteEmpty"),
+                ? directStorage
+                    ? AppStrings.Format("DeleteDirectNonEmptyFormat", directPath, AppStrings.FormatItemCount(window.FileCount), definition.Name)
+                    : AppStrings.Format("DeleteNonEmptyFormat", AppStrings.FormatItemCount(window.FileCount), definition.Name)
+                : directStorage
+                    ? AppStrings.Format("DeleteDirectEmptyFormat", directPath)
+                    : AppStrings.Get("DeleteEmpty"),
             PrimaryButtonText = AppStrings.Get("ExportDelete"),
             CloseButtonText = AppStrings.Get("Cancel"),
             DefaultButton = ContentDialogButton.Close
