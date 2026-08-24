@@ -13,15 +13,34 @@ public sealed class AppHost : IDisposable
     private readonly Dictionary<Guid, MainWindow> _windows = [];
     private readonly DispatcherQueue _dispatcher = DispatcherQueue.GetForCurrentThread();
     private TrayIconService? _tray;
+    private DesktopIconGuardService? _desktopIconGuard;
     private MainWindow? _expandedWindow;
     private bool _transparencyNoticeShown;
     private bool _gridFallbackNoticeShown;
     private bool _exiting;
+    private int _suspendOrganizerRelocation;
 
     public AppStateV2 State { get; private set; } = new();
     public TransferQueue TransferQueue { get; } = new();
     public ConsoleWindow Console { get; private set; } = null!;
     public IReadOnlyCollection<MainWindow> Windows => _windows.Values;
+
+    // 在"桌面图标避让"把文件挪出收纳盒的短暂窗口内，抑制收纳盒自动贴网格重定位，
+    // 避免收纳盒先在 4 秒修复 tick 里被搬走、之后不会自己归位。
+    public bool ShouldSuspendOrganizerRelocation => Volatile.Read(ref _suspendOrganizerRelocation) > 0;
+
+    public IDisposable SuspendOrganizerRelocation()
+    {
+        _ = Interlocked.Increment(ref _suspendOrganizerRelocation);
+        return new RelocationSuspendScope(() => _ = Interlocked.Decrement(ref _suspendOrganizerRelocation));
+    }
+
+    private sealed class RelocationSuspendScope(Action release) : IDisposable
+    {
+        private Action? _release = release;
+
+        public void Dispose() => Interlocked.Exchange(ref _release, null)?.Invoke();
+    }
 
     public async Task InitializeAsync(bool showConsole)
     {
@@ -35,6 +54,8 @@ public sealed class AppHost : IDisposable
         Console.InitializeHostWindow();
         _tray = new TrayIconService(Console.Hwnd, () => State.GlobalSettings.StartWithWindows, () => TransferQueue.IsActive, HandleTrayCommand);
         TransferQueue.StateChanged += (_, _) => Console.UpdateTransferState();
+        _desktopIconGuard = new DesktopIconGuardService(CollectOrganizerBounds, _dispatcher, SuspendOrganizerRelocation);
+        _desktopIconGuard.Start();
 
         if (NormalizePositionedPlacementsOnStartup()) await SaveStateAsync();
         foreach (OrganizerDefinition organizer in State.Organizers) CreateWindow(organizer);
@@ -464,6 +485,7 @@ public sealed class AppHost : IDisposable
         await TransferQueue.WaitForIdleAsync();
         foreach (MainWindow window in _windows.Values.ToArray()) window.ClosePermanently();
         _windows.Clear();
+        _desktopIconGuard?.Dispose();
         _tray?.Dispose();
         Console.ClosePermanently();
         Application.Current.Exit();
@@ -505,8 +527,22 @@ public sealed class AppHost : IDisposable
         });
     }
 
+    private IReadOnlyList<NativeMethods.RECT> CollectOrganizerBounds()
+    {
+        var bounds = new List<NativeMethods.RECT>(_windows.Count);
+        foreach (MainWindow window in _windows.Values)
+        {
+            // 只在折叠态才把收纳盒当作桌面图标覆盖层；展开时窗口提到普通层，
+            // 覆盖桌面图标是正常行为，不参与避让。
+            if (window.IsExpanded) continue;
+            if (window.TryGetWindowBounds(out NativeMethods.RECT rect)) bounds.Add(rect);
+        }
+        return bounds;
+    }
+
     public void Dispose()
     {
+        _desktopIconGuard?.Dispose();
         _tray?.Dispose();
         foreach (MainWindow window in _windows.Values) window.ClosePermanently();
     }

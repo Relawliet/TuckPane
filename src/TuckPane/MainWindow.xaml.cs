@@ -3918,7 +3918,7 @@ public sealed partial class MainWindow : Window
                         _ = SaveStateAsync();
                     }
                 }
-                else
+                else if (!_host.ShouldSuspendOrganizerRelocation)
                 {
                     DesktopGridPlacement? placement = _host.FindCurrentPositionedPlacement(_definition.Id, _compactBounds);
                     if (placement is not null && !RectsEqual(placement.Bounds, _compactBounds))
@@ -4005,6 +4005,12 @@ public sealed partial class MainWindow : Window
     internal IReadOnlyList<WidgetItem> ItemSnapshot => _items;
     internal bool StorageExists => _storage.Exists;
     internal NativeMethods.RECT CompactBounds => _compactBounds;
+
+    internal bool TryGetWindowBounds(out NativeMethods.RECT bounds)
+    {
+        if (_hwnd == IntPtr.Zero || !NativeMethods.IsWindow(_hwnd)) { bounds = default; return false; }
+        return NativeMethods.GetWindowRect(_hwnd, out bounds);
+    }
 
     internal Task CollapseForPeerAsync() => CollapseAsync();
 
