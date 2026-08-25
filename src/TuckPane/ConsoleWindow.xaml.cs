@@ -73,6 +73,12 @@ public sealed partial class ConsoleWindow : Window
 
     public IntPtr Hwnd { get; private set; }
 
+    internal int ChromeApplyCount => _chrome?.ApplyCount ?? 0;
+
+    internal RectInt32? CurrentBounds => _appWindow is null
+        ? null
+        : new RectInt32(_appWindow.Position.X, _appWindow.Position.Y, _appWindow.Size.Width, _appWindow.Size.Height);
+
     public void InitializeHostWindow()
     {
         if (_initialized) return;
@@ -87,7 +93,6 @@ public sealed partial class ConsoleWindow : Window
             presenter.IsMinimizable = true;
         }
         _chrome = new NativeWindowChromeController(Hwnd, DispatcherQueue);
-        Activated += ConsoleWindow_Activated;
         Closed += ConsoleWindow_Closed;
         ApplyNativeWindowChrome();
         RestorePlacement();
@@ -284,6 +289,7 @@ public sealed partial class ConsoleWindow : Window
             if (sender.Size.Width < minimumWidth || sender.Size.Height < minimumHeight)
             {
                 sender.Resize(new SizeInt32(Math.Max(minimumWidth, sender.Size.Width), Math.Max(minimumHeight, sender.Size.Height)));
+                ApplyNativeWindowChrome();
             }
         }
         if (args.DidPositionChange || args.DidSizeChange)
@@ -291,18 +297,10 @@ public sealed partial class ConsoleWindow : Window
             _placementTimer.Stop();
             _placementTimer.Start();
         }
-        ApplyNativeWindowChrome();
-    }
-
-    private void ConsoleWindow_Activated(object sender, WindowActivatedEventArgs args)
-    {
-        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
-        ApplyNativeWindowChrome();
     }
 
     private void ConsoleWindow_Closed(object sender, WindowEventArgs args)
     {
-        Activated -= ConsoleWindow_Activated;
         Closed -= ConsoleWindow_Closed;
         _chrome?.Dispose();
         _chrome = null;
@@ -493,6 +491,7 @@ public sealed partial class ConsoleWindow : Window
         int y = saved is null ? display.Work.Top + (display.Work.Height - height) / 2 : display.Work.Top + (int)Math.Round(saved.YDip * display.Scale);
         NativeMethods.RECT bounds = DisplayPlacementService.Clamp(new NativeMethods.RECT { Left = x, Top = y, Right = x + width, Bottom = y + height }, display.Work);
         _appWindow.MoveAndResize(new RectInt32(bounds.Left, bounds.Top, bounds.Width, bounds.Height));
+        AppLogger.Info($"控制台位置恢复：{bounds.Left},{bounds.Top} {bounds.Width}x{bounds.Height}px。");
     }
 
     private async Task SavePlacementAsync()

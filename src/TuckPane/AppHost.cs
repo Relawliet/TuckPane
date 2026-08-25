@@ -54,6 +54,10 @@ public sealed class AppHost : IDisposable
         Console = new ConsoleWindow(this);
         Console.InitializeHostWindow();
         Console.Activate();
+        if (Console.CurrentBounds is { } consoleBounds)
+        {
+            AppLogger.Info($"启动：控制台 bounds={consoleBounds.X},{consoleBounds.Y} {consoleBounds.Width}x{consoleBounds.Height}px。");
+        }
         _tray = new TrayIconService(Console.Hwnd, () => State.GlobalSettings.StartWithWindows, () => TransferQueue.IsActive, HandleTrayCommand);
         TransferQueue.StateChanged += (_, _) => Console.UpdateTransferState();
         if (!showConsole) Console.HideToTray();
@@ -73,6 +77,7 @@ public sealed class AppHost : IDisposable
         Console.RefreshAll();
         if (showConsole) Console.SetStartupLoading(false);
         AppLogger.Info($"启动：全部收纳窗已创建 {System.Diagnostics.Stopwatch.GetElapsedTime(startupStartedAt).TotalMilliseconds:0}ms。");
+        AppLogger.Info($"启动：控制台 chrome 重设 {Console.ChromeApplyCount} 次。");
     }
 
     public GlassTheme GetTheme(OrganizerDefinition organizer) => organizer.ThemeOverride ?? State.GlobalSettings.Theme;
