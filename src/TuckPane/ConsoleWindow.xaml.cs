@@ -58,6 +58,7 @@ public sealed partial class ConsoleWindow : Window
         ApplyLanguage();
         ConsoleRoot.RequestedTheme = ElementTheme.Light;
         ApplyTheme();
+        SetStartupLoading(true);
         _placementTimer = DispatcherQueue.CreateTimer();
         _placementTimer.Interval = TimeSpan.FromMilliseconds(450);
         _placementTimer.IsRepeating = false;
@@ -196,8 +197,19 @@ public sealed partial class ConsoleWindow : Window
         for (int i = 0; i < 8; i++) await Task.Yield();
     }
 
-    public void SetStartupLoading(bool visible) =>
+    public void SetStartupLoading(bool visible)
+    {
         StartupLoadingOverlay.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        if (visible)
+        {
+            SystemBackdrop = null;
+            ConsoleRoot.Background = new SolidColorBrush(GlassThemePalette.SurfaceColor(_host.State.GlobalSettings.Theme));
+        }
+        else
+        {
+            ApplyTheme();
+        }
+    }
 
     private void ConsoleMinimizeButton_Click(object sender, RoutedEventArgs e)
     {
