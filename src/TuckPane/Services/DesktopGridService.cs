@@ -292,7 +292,7 @@ internal sealed class DesktopGridService
                 UIntPtr.Zero,
                 IntPtr.Zero,
                 0,
-                1000,
+                250,
                 out UIntPtr packedSpacing) != IntPtr.Zero &&
             TryDecodeItemSpacing(packedSpacing, out width, out height);
     }
@@ -307,7 +307,7 @@ internal sealed class DesktopGridService
         centers = [];
         if (listView == IntPtr.Zero) return false;
 
-        if (NativeMethods.SendMessageTimeout(listView, NativeMethods.LVM_GETITEMCOUNT, UIntPtr.Zero, IntPtr.Zero, 0, 1000, out UIntPtr countResult) == IntPtr.Zero)
+        if (NativeMethods.SendMessageTimeout(listView, NativeMethods.LVM_GETITEMCOUNT, UIntPtr.Zero, IntPtr.Zero, 0, 250, out UIntPtr countResult) == IntPtr.Zero)
         {
             return false;
         }
@@ -356,7 +356,7 @@ internal sealed class DesktopGridService
                     (UIntPtr)(uint)index,
                     remoteBuffer,
                     0,
-                    1000,
+                    250,
                     out UIntPtr success);
                 if (wroteRequest && sent != IntPtr.Zero && success != UIntPtr.Zero &&
                     NativeMethods.ReadProcessMemory(process, remoteBuffer, out NativeMethods.RECT iconRect, rectSize, out UIntPtr rectBytesRead) &&
@@ -376,7 +376,7 @@ internal sealed class DesktopGridService
                     (UIntPtr)(uint)index,
                     remoteBuffer,
                     0,
-                    1000,
+                    250,
                     out success);
                 if (sent == IntPtr.Zero || success == UIntPtr.Zero) return false;
                 if (!NativeMethods.ReadProcessMemory(process, remoteBuffer, out NativeMethods.POINT point, pointSize, out UIntPtr pointBytesRead) ||
