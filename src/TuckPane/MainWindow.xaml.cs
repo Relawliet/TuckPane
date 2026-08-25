@@ -264,6 +264,19 @@ public sealed partial class MainWindow : Window
         Activated += MainWindow_Activated;
         Activated += MainWindow_ActivationChanged;
         Closed += MainWindow_Closed;
+
+        // 在任何 Activate 之前把窗口移到屏幕外：WinUI 的 Activated 处理可能晚于
+        // 首帧合成，若留在默认位置会闪出半透明窗口；屏幕外则不可见。
+        _hwnd = WindowNative.GetWindowHandle(this);
+        _deferShow = true;
+        _ = NativeMethods.SetWindowPos(
+            _hwnd,
+            IntPtr.Zero,
+            -32000,
+            -32000,
+            0,
+            0,
+            NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
     }
 
     private void MainWindow_ActivationChanged(object sender, WindowActivatedEventArgs args)
@@ -341,7 +354,7 @@ public sealed partial class MainWindow : Window
     {
         long initStartedAt = System.Diagnostics.Stopwatch.GetTimestamp();
         AppPaths.EnsureCreated();
-        _hwnd = WindowNative.GetWindowHandle(this);
+        if (_hwnd == IntPtr.Zero) _hwnd = WindowNative.GetWindowHandle(this);
         int useHostBackdrop = 1;
         _ = NativeMethods.DwmSetWindowAttribute(
             _hwnd,
