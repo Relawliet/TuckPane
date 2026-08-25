@@ -60,11 +60,18 @@ public sealed class AppHost : IDisposable
         _desktopIconGuard = new DesktopIconGuardService(CollectOrganizerBounds, _dispatcher, SuspendOrganizerRelocation);
         _desktopIconGuard.Start();
 
+        if (showConsole) await Console.WaitFirstRenderAsync();
+
         bool normalized = await Task.Run(NormalizePositionedPlacementsOnStartup);
         AppLogger.Info($"启动：网格归一化完成 {System.Diagnostics.Stopwatch.GetElapsedTime(startupStartedAt).TotalMilliseconds:0}ms（变更={normalized}）。");
         if (normalized) await SaveStateAsync();
-        foreach (OrganizerDefinition organizer in State.Organizers) CreateWindow(organizer);
+        foreach (OrganizerDefinition organizer in State.Organizers)
+        {
+            CreateWindow(organizer);
+            await Task.Yield();
+        }
         Console.RefreshAll();
+        if (showConsole) Console.SetStartupLoading(false);
         AppLogger.Info($"启动：全部收纳窗已创建 {System.Diagnostics.Stopwatch.GetElapsedTime(startupStartedAt).TotalMilliseconds:0}ms。");
     }
 

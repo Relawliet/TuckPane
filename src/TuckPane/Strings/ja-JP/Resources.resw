@@ -155,4 +155,7 @@
   <data name="CopyVerificationFailed" xml:space="preserve"><value>元のディレクトリと一時コピーが一致しないため、検証に失敗しました。</value></data>
   <data name="WindowMinimize" xml:space="preserve"><value>最小化</value></data>
   <data name="WindowClose" xml:space="preserve"><value>トレイに閉じる</value></data>
+  <data name="StartupLoading" xml:space="preserve">
+    <value>読み込み中…</value>
+  </data>
 </root>

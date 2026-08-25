@@ -111,6 +111,7 @@ public sealed partial class ConsoleWindow : Window
         }
         ApplyNativeWindowChrome(refreshFrame: true);
         UpdateThemeCards(theme);
+        StartupLoadingOverlay.Background = new SolidColorBrush(GlassThemePalette.SurfaceColor(theme));
     }
 
     public void RefreshAll(Guid? selectId = null)
@@ -178,6 +179,26 @@ public sealed partial class ConsoleWindow : Window
         _appWindow?.Hide();
     }
 
+    public async Task WaitFirstRenderAsync()
+    {
+        if (!ConsoleRoot.IsLoaded)
+        {
+            TaskCompletionSource loaded = new();
+            RoutedEventHandler handler = null!;
+            handler = (_, _) =>
+            {
+                ConsoleRoot.Loaded -= handler;
+                loaded.TrySetResult();
+            };
+            ConsoleRoot.Loaded += handler;
+            await loaded.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        for (int i = 0; i < 8; i++) await Task.Yield();
+    }
+
+    public void SetStartupLoading(bool visible) =>
+        StartupLoadingOverlay.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+
     private void ConsoleMinimizeButton_Click(object sender, RoutedEventArgs e)
     {
         if (_appWindow?.Presenter is OverlappedPresenter presenter) presenter.Minimize();
@@ -199,6 +220,7 @@ public sealed partial class ConsoleWindow : Window
 
     public void ShowAndActivate(Guid? organizerId = null)
     {
+        SetStartupLoading(false);
         _appWindow?.Show();
         Activate();
         _ = NativeMethods.SetForegroundWindow(Hwnd);

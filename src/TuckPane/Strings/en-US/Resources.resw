@@ -155,4 +155,7 @@
   <data name="CopyVerificationFailed" xml:space="preserve"><value>Copy verification failed because the source and temporary destination differ.</value></data>
   <data name="WindowMinimize" xml:space="preserve"><value>Minimize</value></data>
   <data name="WindowClose" xml:space="preserve"><value>Close to tray</value></data>
+  <data name="StartupLoading" xml:space="preserve">
+    <value>Loading…</value>
+  </data>
 </root>

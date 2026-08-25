@@ -155,4 +155,7 @@
   <data name="CopyVerificationFailed" xml:space="preserve"><value>复制校验失败，源目录与目标临时目录不一致。</value></data>
   <data name="WindowMinimize" xml:space="preserve"><value>最小化</value></data>
   <data name="WindowClose" xml:space="preserve"><value>关闭到托盘</value></data>
+  <data name="StartupLoading" xml:space="preserve">
+    <value>正在加载…</value>
+  </data>
 </root>
