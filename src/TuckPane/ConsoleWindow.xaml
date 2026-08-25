@@ -314,8 +314,7 @@
             Visibility="Visible">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="18">
                 <Image Width="72" Height="72" HorizontalAlignment="Center" Source="ms-appx:///Assets/TuckPane.png" />
-                <ProgressRing Width="36" Height="36" IsActive="True" />
-                <TextBlock x:Name="StartupLoadingText" FontSize="14" HorizontalAlignment="Center" Tag="loc:StartupLoading" Text="正在加载…" />
+                <TextBlock x:Name="StartupLoadingText" FontSize="14" Foreground="{StaticResource ConsolePrimaryTextBrush}" HorizontalAlignment="Center" Tag="loc:StartupLoading" Text="正在加载…" />
             </StackPanel>
         </Grid>
     </Grid>
