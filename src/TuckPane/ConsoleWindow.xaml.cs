@@ -294,7 +294,11 @@ public sealed partial class ConsoleWindow : Window
         ApplyNativeWindowChrome();
     }
 
-    private void ConsoleWindow_Activated(object sender, WindowActivatedEventArgs args) => ApplyNativeWindowChrome();
+    private void ConsoleWindow_Activated(object sender, WindowActivatedEventArgs args)
+    {
+        if (args.WindowActivationState == WindowActivationState.Deactivated) return;
+        ApplyNativeWindowChrome();
+    }
 
     private void ConsoleWindow_Closed(object sender, WindowEventArgs args)
     {

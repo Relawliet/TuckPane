@@ -52,8 +52,8 @@ public sealed class AppHost : IDisposable
         AppLogger.Info($"启动：状态加载完成 {System.Diagnostics.Stopwatch.GetElapsedTime(startupStartedAt).TotalMilliseconds:0}ms。");
 
         Console = new ConsoleWindow(this);
-        Console.Activate();
         Console.InitializeHostWindow();
+        Console.Activate();
         _tray = new TrayIconService(Console.Hwnd, () => State.GlobalSettings.StartWithWindows, () => TransferQueue.IsActive, HandleTrayCommand);
         TransferQueue.StateChanged += (_, _) => Console.UpdateTransferState();
         if (!showConsole) Console.HideToTray();

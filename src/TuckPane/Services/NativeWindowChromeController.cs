@@ -95,6 +95,7 @@ internal sealed class NativeWindowChromeController : IDisposable
             NativeMethods.WM_DWMCOMPOSITIONCHANGED or
             NativeMethods.WM_SETTINGCHANGE)
         {
+            if (message == NativeMethods.WM_NCACTIVATE && wParam == UIntPtr.Zero) return result;
             bool refreshFrame = message != NativeMethods.WM_NCACTIVATE;
             _ = _dispatcher.TryEnqueue(() => Apply(refreshFrame));
         }
