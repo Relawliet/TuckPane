@@ -61,6 +61,7 @@ public sealed class GlobalSettings
     public GlassTheme Theme { get; set; } = GlassTheme.Light;
     public bool StartWithWindows { get; set; }
     public bool CollapseOnOutsideClick { get; set; } = true;
+    public bool ShowConsoleOnLaunch { get; set; }
     public AppLanguage Language { get; set; } = AppLanguage.ChineseSimplified;
 }
 

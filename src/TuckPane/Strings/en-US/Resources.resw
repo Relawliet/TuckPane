@@ -158,4 +158,13 @@
   <data name="StartupLoading" xml:space="preserve">
     <value>Loading…</value>
   </data>
+  <data name="ShowConsoleTitle" xml:space="preserve">
+    <value>Show console on launch</value>
+  </data>
+  <data name="ShowConsoleDescription" xml:space="preserve">
+    <value>Open the console window when launched manually. Turn off to start silently to the tray.</value>
+  </data>
+  <data name="ShowConsoleErrorTitle" xml:space="preserve">
+    <value>Could not update launch display setting</value>
+  </data>
 </root>

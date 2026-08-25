@@ -125,6 +125,7 @@ public sealed partial class ConsoleWindow : Window
         UpdateThemeCards(_host.State.GlobalSettings.Theme);
         UpdateStartupToggle();
         UpdateCollapseOutsideToggle();
+        UpdateShowConsoleToggle();
         CreateOrganizerButton.IsEnabled = _host.State.Organizers.Count < OrganizerLimits.MaximumOrganizers;
         CreateLimitText.Visibility = _host.State.Organizers.Count >= OrganizerLimits.MaximumOrganizers ? Visibility.Visible : Visibility.Collapsed;
         PopulateManageList(selectId ?? _selectedId);
@@ -581,6 +582,31 @@ public sealed partial class ConsoleWindow : Window
             AppLogger.Error("无法更新自动收缩设置。", ex);
             UpdateCollapseOutsideToggle();
             ShowError(AppStrings.Get("CollapseOutsideErrorTitle"), ex.Message);
+        }
+    }
+
+    private bool _loadingShowConsole;
+
+    private void UpdateShowConsoleToggle()
+    {
+        if (ShowConsoleToggle is null) return;
+        _loadingShowConsole = true;
+        ShowConsoleToggle.IsOn = _host.State.GlobalSettings.ShowConsoleOnLaunch;
+        _loadingShowConsole = false;
+    }
+
+    private async void ShowConsoleToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_componentReady || _loadingShowConsole) return;
+        try
+        {
+            await _host.SetShowConsoleOnLaunchAsync(ShowConsoleToggle.IsOn);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("无法更新启动显示控制台设置。", ex);
+            UpdateShowConsoleToggle();
+            ShowError(AppStrings.Get("ShowConsoleErrorTitle"), ex.Message);
         }
     }
 

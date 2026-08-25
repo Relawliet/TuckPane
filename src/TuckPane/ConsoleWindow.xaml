@@ -203,6 +203,16 @@
                             <Grid ColumnSpacing="12">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock FontSize="15" Tag="loc:ShowConsoleTitle" Text="启动时显示总控台" />
+                                    <TextBlock Foreground="{StaticResource ConsoleSecondaryTextBrush}" FontSize="12" Tag="loc:ShowConsoleDescription" Text="手动启动时打开总控台窗口，关闭则静默到托盘。" />
+                                </StackPanel>
+                                <ToggleSwitch x:Name="ShowConsoleToggle" Grid.Column="1" VerticalAlignment="Center" Toggled="ShowConsoleToggle_Toggled" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource Row}">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Spacing="2">
                                     <TextBlock FontSize="15" Tag="loc:LanguageLabel" Text="语言" />
                                     <TextBlock Foreground="{StaticResource ConsoleSecondaryTextBrush}" FontSize="12" Tag="loc:LanguageDescription" Text="切换后立即应用，无需重启。" />
                                 </StackPanel>

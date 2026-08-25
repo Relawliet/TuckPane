@@ -32,7 +32,7 @@ public partial class App : Application
         {
             _host = new AppHost();
             bool startup = Environment.GetCommandLineArgs().Any(argument => argument.Equals("--startup", StringComparison.OrdinalIgnoreCase));
-            await _host.InitializeAsync(showConsole: !startup);
+            await _host.InitializeAsync(startup);
             _singleInstance.Listen(() => _host.OpenConsole());
         }
         catch (Exception ex)

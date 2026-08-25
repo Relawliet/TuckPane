@@ -42,7 +42,7 @@ public sealed class AppHost : IDisposable
         public void Dispose() => Interlocked.Exchange(ref _release, null)?.Invoke();
     }
 
-    public async Task InitializeAsync(bool showConsole)
+    public async Task InitializeAsync(bool startup)
     {
         long startupStartedAt = System.Diagnostics.Stopwatch.GetTimestamp();
         AppPaths.EnsureCreated();
@@ -60,6 +60,7 @@ public sealed class AppHost : IDisposable
         }
         _tray = new TrayIconService(Console.Hwnd, () => State.GlobalSettings.StartWithWindows, () => TransferQueue.IsActive, HandleTrayCommand);
         TransferQueue.StateChanged += (_, _) => Console.UpdateTransferState();
+        bool showConsole = !startup && (State.Organizers.Count == 0 || State.GlobalSettings.ShowConsoleOnLaunch);
         if (!showConsole) Console.HideToTray();
         _desktopIconGuard = new DesktopIconGuardService(CollectOrganizerBounds, _dispatcher, SuspendOrganizerRelocation);
         _desktopIconGuard.Start();
@@ -75,7 +76,7 @@ public sealed class AppHost : IDisposable
             await Task.Yield();
         }
         Console.RefreshAll();
-        if (showConsole) Console.SetStartupLoading(false);
+        Console.SetStartupLoading(false);
         AppLogger.Info($"启动：全部收纳窗已创建 {System.Diagnostics.Stopwatch.GetElapsedTime(startupStartedAt).TotalMilliseconds:0}ms。");
         AppLogger.Info($"启动：控制台 chrome 重设 {Console.ChromeApplyCount} 次。");
     }
@@ -383,6 +384,22 @@ public sealed class AppHost : IDisposable
             throw;
         }
         foreach (MainWindow window in _windows.Values) window.ApplyOutsideClickSetting();
+    }
+
+    public async Task SetShowConsoleOnLaunchAsync(bool enabled)
+    {
+        if (State.GlobalSettings.ShowConsoleOnLaunch == enabled) return;
+        bool previous = State.GlobalSettings.ShowConsoleOnLaunch;
+        State.GlobalSettings.ShowConsoleOnLaunch = enabled;
+        try
+        {
+            await SaveStateAsync();
+        }
+        catch
+        {
+            State.GlobalSettings.ShowConsoleOnLaunch = previous;
+            throw;
+        }
     }
 
     public async Task SetLanguageAsync(AppLanguage language)

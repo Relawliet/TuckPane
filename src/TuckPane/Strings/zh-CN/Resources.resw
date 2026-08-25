@@ -158,4 +158,13 @@
   <data name="StartupLoading" xml:space="preserve">
     <value>正在加载…</value>
   </data>
+  <data name="ShowConsoleTitle" xml:space="preserve">
+    <value>启动时显示总控台</value>
+  </data>
+  <data name="ShowConsoleDescription" xml:space="preserve">
+    <value>手动启动时打开总控台窗口，关闭则静默到托盘。</value>
+  </data>
+  <data name="ShowConsoleErrorTitle" xml:space="preserve">
+    <value>无法更新启动显示设置</value>
+  </data>
 </root>

@@ -158,4 +158,13 @@
   <data name="StartupLoading" xml:space="preserve">
     <value>読み込み中…</value>
   </data>
+  <data name="ShowConsoleTitle" xml:space="preserve">
+    <value>起動時にコントロールを表示</value>
+  </data>
+  <data name="ShowConsoleDescription" xml:space="preserve">
+    <value>手動起動時にコントロールウィンドウを開きます。オフでトレイに格納します。</value>
+  </data>
+  <data name="ShowConsoleErrorTitle" xml:space="preserve">
+    <value>起動時表示設定を更新できませんでした</value>
+  </data>
 </root>
