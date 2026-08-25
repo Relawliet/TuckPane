@@ -44,23 +44,28 @@ public sealed class AppHost : IDisposable
 
     public async Task InitializeAsync(bool showConsole)
     {
+        long startupStartedAt = System.Diagnostics.Stopwatch.GetTimestamp();
         AppPaths.EnsureCreated();
         State = await _stateStore.LoadAsync();
         AppStrings.SetLanguage(State.GlobalSettings.Language);
         StartupService.Apply(State.GlobalSettings.StartWithWindows);
+        AppLogger.Info($"启动：状态加载完成 {System.Diagnostics.Stopwatch.GetElapsedTime(startupStartedAt).TotalMilliseconds:0}ms。");
 
         Console = new ConsoleWindow(this);
         Console.Activate();
         Console.InitializeHostWindow();
         _tray = new TrayIconService(Console.Hwnd, () => State.GlobalSettings.StartWithWindows, () => TransferQueue.IsActive, HandleTrayCommand);
         TransferQueue.StateChanged += (_, _) => Console.UpdateTransferState();
+        if (!showConsole) Console.HideToTray();
         _desktopIconGuard = new DesktopIconGuardService(CollectOrganizerBounds, _dispatcher, SuspendOrganizerRelocation);
         _desktopIconGuard.Start();
 
-        if (NormalizePositionedPlacementsOnStartup()) await SaveStateAsync();
+        bool normalized = await Task.Run(NormalizePositionedPlacementsOnStartup);
+        AppLogger.Info($"启动：网格归一化完成 {System.Diagnostics.Stopwatch.GetElapsedTime(startupStartedAt).TotalMilliseconds:0}ms（变更={normalized}）。");
+        if (normalized) await SaveStateAsync();
         foreach (OrganizerDefinition organizer in State.Organizers) CreateWindow(organizer);
         Console.RefreshAll();
-        if (!showConsole) Console.HideToTray();
+        AppLogger.Info($"启动：全部收纳窗已创建 {System.Diagnostics.Stopwatch.GetElapsedTime(startupStartedAt).TotalMilliseconds:0}ms。");
     }
 
     public GlassTheme GetTheme(OrganizerDefinition organizer) => organizer.ThemeOverride ?? State.GlobalSettings.Theme;
@@ -279,7 +284,9 @@ public sealed class AppHost : IDisposable
             ?? DisplayPlacementService.GetDisplays().FirstOrDefault(item => item.Monitor.Left == 0 && item.Monitor.Top == 0)
             ?? DisplayPlacementService.GetDisplays().First();
         DesktopGridSnapshot snapshot = ReadGridSnapshot(display);
-        double scale = DesktopGridService.CalculatePositionedCompactScale(snapshot);
+        double scale = Math.Min(
+            organizer.CompactScale,
+            DesktopGridService.CalculatePositionedCompactScale(snapshot));
         (int width, int height, _) = DesktopGridService.CalculatePositionedWindowSize(snapshot, scale);
         NativeMethods.RECT bounds = DisplayPlacementService.RestoreToDisplay(organizer.Position, display, width, height);
         return new DesktopGridPlacement(bounds, scale, snapshot.ExplorerPositionsAvailable);
@@ -450,7 +457,9 @@ public sealed class AppHost : IDisposable
             if (organizer.PositionLocked)
             {
                 DesktopGridSnapshot lockedSnapshot = ReadGridSnapshot(display);
-                double lockedScale = DesktopGridService.CalculatePositionedCompactScale(lockedSnapshot);
+                double lockedScale = Math.Min(
+                    organizer.CompactScale,
+                    DesktopGridService.CalculatePositionedCompactScale(lockedSnapshot));
                 (int lockedWidth, int lockedHeight, _) = DesktopGridService.CalculatePositionedWindowSize(lockedSnapshot, lockedScale);
                 NativeMethods.RECT locked = DisplayPlacementService.RestoreToDisplay(organizer.Position, display, lockedWidth, lockedHeight);
                 occupied.Add(locked);
@@ -486,7 +495,7 @@ public sealed class AppHost : IDisposable
         if (!snapshot.ExplorerPositionsAvailable && !_gridFallbackNoticeShown)
         {
             _gridFallbackNoticeShown = true;
-            Notify("TuckPane", AppStrings.Get("GridFallbackMessage"));
+            _ = _dispatcher.TryEnqueue(() => Notify("TuckPane", AppStrings.Get("GridFallbackMessage")));
         }
         return snapshot;
     }

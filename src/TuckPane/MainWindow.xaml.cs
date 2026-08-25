@@ -79,6 +79,7 @@ public sealed partial class MainWindow : Window
     private bool _expanded;
     private bool _animating;
     private bool _closing;
+    private bool _deferShow;
     private CancellationTokenSource? _transitionCancellation;
     private RectangleClip? _compactClip;
     private RectangleClip? _expandedClip;
@@ -338,6 +339,7 @@ public sealed partial class MainWindow : Window
 
     private async Task InitializeAsync()
     {
+        long initStartedAt = System.Diagnostics.Stopwatch.GetTimestamp();
         AppPaths.EnsureCreated();
         _hwnd = WindowNative.GetWindowHandle(this);
         int useHostBackdrop = 1;
@@ -356,6 +358,8 @@ public sealed partial class MainWindow : Window
             presenter.IsMaximizable = false;
             presenter.IsMinimizable = false;
         }
+        _appWindow.Hide();
+        _deferShow = true;
 
         await WaitForLoadedAsync();
 
@@ -402,14 +406,17 @@ public sealed partial class MainWindow : Window
 
         _desktopLayer = new DesktopLayerService(_hwnd);
         _outsideClickHook = new OutsideClickHook(_hwnd, DispatcherQueue, OnOutsideClick);
+        _desktopRepairTimer.Start();
+        if (_storage.Exists) StartWatcher();
+        _deferShow = false;
         ApplyBounds(_compactBounds, show: true);
+        _desktopLayer.Reattach();
+        AppLogger.Info($"初始化完成，耗时 {System.Diagnostics.Stopwatch.GetElapsedTime(initStartedAt).TotalMilliseconds:0}ms，收起窗口={_compactBounds.Width}x{_compactBounds.Height}px。");
         if (!_uiSettings.AdvancedEffectsEnabled)
         {
             _host.NotifyTransparencyFallback();
         }
-        _desktopRepairTimer.Start();
-        if (_storage.Exists) StartWatcher();
-        await RefreshCatalogAsync(notifyUnsupported: true, refreshIcons: true);
+        _ = RefreshCatalogAsync(notifyUnsupported: true, refreshIcons: true);
         WindowRoot.Focus(FocusState.Programmatic);
         if (Environment.GetEnvironmentVariable("GLASSFOLDER_TEST_EXPANDED") == "1")
         {
@@ -4237,6 +4244,7 @@ public sealed partial class MainWindow : Window
 
     private void ApplyBounds(NativeMethods.RECT bounds, bool show)
     {
+        if (_deferShow) show = false;
         uint flags = NativeMethods.SWP_NOACTIVATE | (show ? NativeMethods.SWP_SHOWWINDOW : 0);
         _ = NativeMethods.SetWindowPos(_hwnd, NativeMethods.HWND_TOP, bounds.Left, bounds.Top, bounds.Width, bounds.Height, flags);
         if (_expanded && !_animating && _canvasResizeEdgeWindows.Count > 0)
