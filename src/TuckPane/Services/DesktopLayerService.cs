@@ -28,10 +28,10 @@ public sealed class DesktopLayerService : IDisposable
         _ = NativeMethods.DwmSetWindowAttribute(window, NativeMethods.DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
         int border = NativeMethods.DWMWA_COLOR_NONE;
         _ = NativeMethods.DwmSetWindowAttribute(window, NativeMethods.DWMWA_BORDER_COLOR, ref border, sizeof(int));
-        Reattach();
+        Reattach(show: false);
     }
 
-    public void Reattach()
+    public void Reattach(bool show = true)
     {
         if (_expanded)
         {
@@ -47,7 +47,8 @@ public sealed class DesktopLayerService : IDisposable
                 0,
                 0,
                 0,
-                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
+                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE |
+                (show ? NativeMethods.SWP_SHOWWINDOW : 0));
             return;
         }
 
@@ -68,7 +69,8 @@ public sealed class DesktopLayerService : IDisposable
             0,
             0,
             0,
-            NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
+            NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE |
+            (show ? NativeMethods.SWP_SHOWWINDOW : 0));
     }
 
     public void BringAboveDesktopPeers()
