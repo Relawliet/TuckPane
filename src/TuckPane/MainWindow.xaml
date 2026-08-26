@@ -21,13 +21,13 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Center">
             <Grid.ContextFlyout>
-                <MenuFlyout x:Name="CompactTileContextMenu">
-                    <MenuFlyoutItem x:Name="CompactManageMenuItem" Click="ManageMenuItem_Click" Text="设置" />
-                    <MenuFlyoutItem x:Name="CompactDuplicateMenuItem" Click="DuplicateWindowMenuItem_Click" Text="窗口复制" />
-                    <MenuFlyoutItem x:Name="CompactToggleModeMenuItem" Click="ToggleModeMenuItem_Click" Text="模式切换" />
-                    <MenuFlyoutItem x:Name="CompactRenameMenuItem" Click="RenameMenuItem_Click" Text="重命名" />
-                    <MenuFlyoutItem x:Name="CompactOpenStorageMenuItem" Click="OpenStorageMenuItem_Click" Text="打开收纳目录" />
-                    <MenuFlyoutItem x:Name="CompactDeleteWindowMenuItem" Click="DeleteWindowMenuItem_Click" Text="删除窗口" />
+                <MenuFlyout x:Name="CompactTileContextMenu" Opened="ContextMenu_Opened" Closed="ContextMenu_Closed">
+                    <MenuFlyoutItem x:Name="CompactManageMenuItem" Click="ManageMenuItem_Click" Tag="ContextManage" Text="设置" />
+                    <MenuFlyoutItem x:Name="CompactDuplicateMenuItem" Click="DuplicateWindowMenuItem_Click" Tag="ContextDuplicate" Text="窗口复制" />
+                    <MenuFlyoutItem x:Name="CompactToggleModeMenuItem" Click="ToggleModeMenuItem_Click" Tag="ContextSwitchMode" Text="模式切换" />
+                    <MenuFlyoutItem x:Name="CompactRenameMenuItem" Click="RenameMenuItem_Click" Tag="ContextRename" Text="重命名" />
+                    <MenuFlyoutItem x:Name="CompactOpenStorageMenuItem" Click="OpenStorageMenuItem_Click" Tag="ContextOpenStorage" Text="打开收纳目录" />
+                    <MenuFlyoutItem x:Name="CompactDeleteWindowMenuItem" Click="DeleteWindowMenuItem_Click" Tag="ContextDeleteWindow" Text="删除窗口" />
                 </MenuFlyout>
             </Grid.ContextFlyout>
             <Grid.RowDefinitions>
@@ -105,13 +105,17 @@
             UseLayoutRounding="True"
             Visibility="Collapsed">
             <Grid.ContextFlyout>
-                <MenuFlyout x:Name="ExpandedViewContextMenu">
-                    <MenuFlyoutItem x:Name="ExpandedManageMenuItem" Click="ManageMenuItem_Click" Text="设置" />
-                    <MenuFlyoutItem x:Name="ExpandedDuplicateMenuItem" Click="DuplicateWindowMenuItem_Click" Text="窗口复制" />
-                    <MenuFlyoutItem x:Name="ExpandedToggleModeMenuItem" Click="ToggleModeMenuItem_Click" Text="模式切换" />
-                    <MenuFlyoutItem x:Name="ExpandedRenameMenuItem" Click="RenameMenuItem_Click" Text="重命名" />
-                    <MenuFlyoutItem x:Name="ExpandedOpenStorageMenuItem" Click="OpenStorageMenuItem_Click" Text="打开收纳目录" />
-                    <MenuFlyoutItem x:Name="ExpandedDeleteWindowMenuItem" Click="DeleteWindowMenuItem_Click" Text="删除窗口" />
+                <MenuFlyout x:Name="ExpandedViewContextMenu" Opened="ContextMenu_Opened" Closed="ContextMenu_Closed">
+                    <MenuFlyoutItem x:Name="NewNoteMenuItem" Click="NewNoteMenuItem_Click" Tag="ContextNewNote" Text="新建便签" />
+                    <MenuFlyoutItem x:Name="PasteMenuItem" Click="PasteMenuItem_Click" IsEnabled="False" Tag="ContextPaste" Text="粘贴" Visibility="Collapsed" />
+                    <MenuFlyoutItem x:Name="NewFolderMenuItem" Click="NewFolderMenuItem_Click" Tag="ContextNewFolder" Text="新建文件夹" Visibility="Collapsed" />
+                    <MenuFlyoutSeparator x:Name="StationActionSeparator" Visibility="Collapsed" />
+                    <MenuFlyoutItem x:Name="ExpandedManageMenuItem" Click="ManageMenuItem_Click" Tag="ContextManage" Text="设置" />
+                    <MenuFlyoutItem x:Name="ExpandedDuplicateMenuItem" Click="DuplicateWindowMenuItem_Click" Tag="ContextDuplicate" Text="窗口复制" />
+                    <MenuFlyoutItem x:Name="ExpandedToggleModeMenuItem" Click="ToggleModeMenuItem_Click" Tag="ContextSwitchMode" Text="模式切换" />
+                    <MenuFlyoutItem x:Name="ExpandedRenameMenuItem" Click="RenameMenuItem_Click" Tag="ContextRename" Text="重命名" />
+                    <MenuFlyoutItem x:Name="ExpandedOpenStorageMenuItem" Click="OpenStorageMenuItem_Click" Tag="ContextOpenStorage" Text="打开收纳目录" />
+                    <MenuFlyoutItem x:Name="ExpandedDeleteWindowMenuItem" Click="DeleteWindowMenuItem_Click" Tag="ContextDeleteWindow" Text="删除窗口" />
                 </MenuFlyout>
             </Grid.ContextFlyout>
             <Grid x:Name="ExpandedSurfaceHost" />
@@ -170,6 +174,7 @@
                             <Border
                                 x:Name="ItemHost"
                                 Background="Transparent"
+                                ContextRequested="Item_ContextRequested"
                                 CornerRadius="16"
                                 Padding="5"
                                 PointerCanceled="Item_PointerCanceled"
@@ -187,16 +192,6 @@
                                     Tag="{Binding RelativeName}"
                                     VerticalAlignment="Center"
                                     Spacing="6">
-                                    <StackPanel.ContextFlyout>
-                                        <MenuFlyout x:Name="ItemContextMenu">
-                                            <MenuFlyoutItem Click="ManageMenuItem_Click" Text="设置" />
-                                            <MenuFlyoutItem Click="DuplicateWindowMenuItem_Click" Text="窗口复制" />
-                                            <MenuFlyoutItem Click="ToggleModeMenuItem_Click" Text="模式切换" />
-                                            <MenuFlyoutItem Click="RenameMenuItem_Click" Text="重命名" />
-                                            <MenuFlyoutItem Click="OpenStorageMenuItem_Click" Text="打开收纳目录" />
-                                            <MenuFlyoutItem Click="DeleteWindowMenuItem_Click" Text="删除窗口" />
-                                        </MenuFlyout>
-                                    </StackPanel.ContextFlyout>
                                     <Grid x:Name="ItemIconContainer" Width="72" Height="72">
                                         <FontIcon
                                             x:Name="ItemFallbackIcon"

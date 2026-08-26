@@ -1,0 +1,657 @@
+param(
+    [string]$AppExe = (Join-Path $PSScriptRoot '..\src\TuckPane\bin\x64\Release\net10.0-windows10.0.22621.0\TuckPane.exe'),
+    [switch]$TitleDragOnly,
+    [switch]$ActivationOnly,
+    [switch]$PortableNoteOnly,
+    [switch]$RuledLinesOnly,
+    [switch]$KeepRoot
+)
+
+$ErrorActionPreference = 'Stop'
+$resolvedExe = (Resolve-Path -LiteralPath $AppExe).Path
+$runRoot = Join-Path ([IO.Path]::GetTempPath()) ('TuckPane-note-ui-' + [Guid]::NewGuid().ToString('N'))
+$storage = Join-Path $runRoot 'UserProfile\TuckPane\Windows\NoteProbe'
+$targetStorage = Join-Path $runRoot 'UserProfile\TuckPane\Windows\TargetProbe'
+$local = Join-Path $runRoot 'LocalAppData\TuckPane'
+$statePath = Join-Path $local 'state.json'
+$originalRoot = $env:TUCKPANE_TEST_ROOT
+$originalExpanded = $env:GLASSFOLDER_TEST_EXPANDED
+$originalClipboardText = Get-Clipboard -Raw -ErrorAction SilentlyContinue
+$app = $null
+
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class TuckPaneNoteInput {
+    [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
+    [StructLayout(LayoutKind.Sequential)] public struct Point { public int X, Y; }
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr window);
+    [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr window);
+    [DllImport("user32.dll")] public static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern int GetSystemMetrics(int index);
+    [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(Point point);
+    [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+    [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint x, uint y, int data, UIntPtr extra);
+    [DllImport("user32.dll", EntryPoint="GetWindowLongPtrW")] public static extern IntPtr GetWindowLongPtr(IntPtr window, int index);
+    [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr window);
+    [DllImport("user32.dll")] public static extern IntPtr MonitorFromWindow(IntPtr window, uint flags);
+    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr window, out Rect rect);
+    [DllImport("shcore.dll")] public static extern int GetScaleFactorForMonitor(IntPtr monitor, out int scale);
+    public static void MoveAbsolute(int x, int y) {
+        int left = GetSystemMetrics(76), top = GetSystemMetrics(77);
+        int width = GetSystemMetrics(78), height = GetSystemMetrics(79);
+        uint absoluteX = (uint)Math.Round((x - left) * 65535d / Math.Max(1, width - 1));
+        uint absoluteY = (uint)Math.Round((y - top) * 65535d / Math.Max(1, height - 1));
+        mouse_event(0xC001, absoluteX, absoluteY, 0, UIntPtr.Zero);
+    }
+}
+'@
+Add-Type -AssemblyName System.Windows.Forms
+$primaryDevice = [Windows.Forms.Screen]::PrimaryScreen.DeviceName
+
+function Wait-ForCondition([scriptblock]$Condition, [string]$Failure, [int]$TimeoutMs = 8000) {
+    $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMs)
+    do {
+        if (& $Condition) { return }
+        Start-Sleep -Milliseconds 100
+    } while ([DateTime]::UtcNow -lt $deadline)
+    throw $Failure
+}
+
+function Get-AppWindows([int]$ProcessId) {
+    return @(winapp ui list-windows -a $ProcessId --json 2>$null | ConvertFrom-Json)
+}
+
+function Get-State {
+    return Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+}
+
+function Set-ProbeForeground([long]$Hwnd) {
+    [TuckPaneNoteInput]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)
+    [TuckPaneNoteInput]::BringWindowToTop([IntPtr]$Hwnd) | Out-Null
+    [TuckPaneNoteInput]::SetForegroundWindow([IntPtr]$Hwnd) | Out-Null
+    [TuckPaneNoteInput]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 100
+}
+
+function Invoke-MouseDrag([int]$FromX, [int]$FromY, [int]$ToX, [int]$ToY) {
+    [TuckPaneNoteInput]::MoveAbsolute($FromX, $FromY)
+    Start-Sleep -Milliseconds 150
+    [TuckPaneNoteInput]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 400
+    foreach ($step in 1..32) {
+        [TuckPaneNoteInput]::MoveAbsolute(
+            [int]($FromX + ($ToX - $FromX) * $step / 32),
+            [int]($FromY + ($ToY - $FromY) * $step / 32))
+        Start-Sleep -Milliseconds 20
+    }
+    Start-Sleep -Milliseconds 1600
+    [TuckPaneNoteInput]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
+}
+
+function Get-UiDescendants($Nodes) {
+    foreach ($node in @($Nodes)) {
+        $node
+        if ($null -ne $node.children) { Get-UiDescendants $node.children }
+    }
+}
+
+function Open-NoteContextMenu([long]$MainHwnd, [string]$Selector) {
+    Set-ProbeForeground $MainHwnd
+    winapp ui focus CollapseButton -w $MainHwnd | Out-Null
+    winapp ui click $Selector -w $MainHwnd --right | Out-Null
+    winapp ui wait-for RenameNoteMenuItem -w $MainHwnd --timeout 3000 | Out-Null
+}
+
+try {
+    [IO.Directory]::CreateDirectory($storage) | Out-Null
+    [IO.Directory]::CreateDirectory($local) | Out-Null
+    $state = @{
+        SchemaVersion = 5
+        GlobalSettings = @{
+            Theme = 0; StartWithWindows = $false; Language = 0
+            CollapseOnOutsideClick = $false; ExpandOnHover = $false; CollapseOnPointerLeave = $false
+        }
+        ConsolePlacement = $null
+        Organizers = @(@{
+            Id = '77777777-7777-7777-7777-777777777777'
+            Name = 'NoteProbe'; CreatedAtUtc = [DateTimeOffset]::UtcNow
+            ThemeOverride = $null; PlacementMode = 0; DockEdge = 2
+            Layout = @{ Mode = 0; Rows = 2; Columns = 2 }
+            CompactScale = 1.0; CanvasScale = 0.7; ItemScale = 1.0; NameScale = 1.0
+            ManualCanvasBaseWidthDip = $null; ManualCanvasBaseHeightDip = $null; Position = $null
+            StorageRelativePath = 'Windows\NoteProbe'; StorageAbsolutePath = $null
+            ItemOrder = @(); Notes = @()
+        })
+    }
+    if ($PortableNoteOnly) {
+        $portableFileName = '便签 文件.tucknote'
+        $portableSelector = "PortableNoteItem-$portableFileName"
+        $portablePath = Join-Path $storage $portableFileName
+        [IO.File]::WriteAllText($portablePath,
+            '{"format":"TuckPane.Note","version":1,"theme":3,"fontSize":14,"showRuledLines":true,"placement":null,"html":"portable"}',
+            [Text.UTF8Encoding]::new($false))
+        $state.Organizers[0].ItemOrder = @($portableFileName)
+        $state.Organizers[0].Position = @{
+            MonitorDevice = $primaryDevice; XDip = 240; YDip = 120
+            SavedWorkAreaWidthDip = 0; SavedWorkAreaHeightDip = 0
+        }
+        [IO.Directory]::CreateDirectory($targetStorage) | Out-Null
+        $state.Organizers += @{
+            Id = '88888888-8888-8888-8888-888888888888'
+            Name = 'TargetProbe'; CreatedAtUtc = [DateTimeOffset]::UtcNow
+            ThemeOverride = $null; PlacementMode = 0; DockEdge = 2
+            Layout = @{ Mode = 0; Rows = 2; Columns = 2 }
+            CompactScale = 1.0; CanvasScale = 0.7; ItemScale = 1.0; NameScale = 1.0
+            ManualCanvasBaseWidthDip = $null; ManualCanvasBaseHeightDip = $null
+            Position = @{
+                MonitorDevice = $primaryDevice; XDip = 1200; YDip = 120
+                SavedWorkAreaWidthDip = 0; SavedWorkAreaHeightDip = 0
+            }
+            StorageRelativePath = 'Windows\TargetProbe'; StorageAbsolutePath = $null
+            ItemOrder = @(); Notes = @()
+        }
+    }
+    if ($RuledLinesOnly) {
+        $ruledPortablePath = Join-Path $storage '横线输入便签.tucknote'
+        [IO.File]::WriteAllText($ruledPortablePath,
+            '{"format":"TuckPane.Note","version":1,"theme":3,"fontSize":14,"showRuledLines":false,"placement":null,"html":"<div>中文 gjpqy</div><div>第二行 gjpqy</div>"}',
+            [Text.UTF8Encoding]::new($false))
+    }
+    [IO.File]::WriteAllText($statePath, ($state | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+
+    $env:TUCKPANE_TEST_ROOT = $runRoot
+    $env:GLASSFOLDER_TEST_EXPANDED = '1'
+    $app = Start-Process -FilePath $resolvedExe -ArgumentList '--startup' -PassThru
+    $expectedOrganizerCount = if ($PortableNoteOnly) { 2 } else { 1 }
+    Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq 'TuckPane').Count -eq $expectedOrganizerCount } `
+        'Expanded organizer did not appear.'
+    $organizerWindows = @(Get-AppWindows $app.Id | Where-Object title -eq 'TuckPane')
+    $main = $organizerWindows[0]
+    $targetMain = $null
+    if ($PortableNoteOnly) {
+        Wait-ForCondition {
+            $script:portableSourceMain = $null
+            $script:portableTargetMain = $null
+            $script:portableOrganizerWindows = @(Get-AppWindows $app.Id | Where-Object title -eq 'TuckPane')
+            foreach ($candidate in $script:portableOrganizerWindows) {
+                if (@((winapp ui search 'NoteProbe' -w $candidate.hwnd --json 2>$null | ConvertFrom-Json).matches).Count -gt 0) {
+                    $script:portableSourceMain = $candidate
+                }
+                if (@((winapp ui search 'TargetProbe' -w $candidate.hwnd --json 2>$null | ConvertFrom-Json).matches).Count -gt 0) {
+                    $script:portableTargetMain = $candidate
+                }
+            }
+            if ($null -eq $script:portableSourceMain -and $null -ne $script:portableTargetMain) {
+                $script:portableSourceMain = @($script:portableOrganizerWindows | Where-Object hwnd -ne $script:portableTargetMain.hwnd)[0]
+            }
+            if ($null -eq $script:portableTargetMain -and $null -ne $script:portableSourceMain) {
+                $script:portableTargetMain = @($script:portableOrganizerWindows | Where-Object hwnd -ne $script:portableSourceMain.hwnd)[0]
+            }
+            $null -ne $script:portableSourceMain -and $null -ne $script:portableTargetMain
+        } 'Could not identify the portable-note source and target organizers.'
+        $main = $script:portableSourceMain
+        $targetMain = $script:portableTargetMain
+        $collapseMatches = @((winapp ui search CollapseButton -w $main.hwnd --json 2>$null | ConvertFrom-Json).matches)
+        if ($collapseMatches.Count -eq 0) {
+            foreach ($attempt in 1..3) {
+                $main = @(Get-AppWindows $app.Id | Where-Object hwnd -eq $main.hwnd)[0]
+                if ($main.width -gt 200) { break }
+                winapp ui focus CompactNameText -w $main.hwnd | Out-Null
+                $compactTree = winapp ui inspect window -w $main.hwnd --json 2>$null | ConvertFrom-Json
+                $compactImage = @(Get-UiDescendants $compactTree.windows[0].elements | Where-Object type -eq 'Image')[0]
+                if ($null -eq $compactImage) { throw 'The portable-note source compact tile was not exposed to UI Automation.' }
+                Set-ProbeForeground $main.hwnd
+                winapp ui hover $compactImage.selector -w $main.hwnd | Out-Null
+                winapp ui click $compactImage.selector -w $main.hwnd | Out-Null
+                Start-Sleep -Milliseconds 1200
+            }
+            $main = @(Get-AppWindows $app.Id | Where-Object hwnd -eq $main.hwnd)[0]
+            if ($main.width -le 200) { throw 'The portable-note source organizer did not expand.' }
+        }
+    }
+    winapp ui wait-for CollapseButton -w $main.hwnd --timeout 5000 | Out-Null
+    Set-ProbeForeground $main.hwnd
+
+    if ($RuledLinesOnly) {
+        $redirect = Start-Process -FilePath $resolvedExe -ArgumentList ('"{0}"' -f $ruledPortablePath) -PassThru
+        try {
+            Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq '横线输入便签').Count -eq 1 } `
+                'The ruled-lines portable note did not open in the primary instance.'
+        }
+        finally {
+            if (-not $redirect.HasExited) { Stop-Process -Id $redirect.Id -Force -ErrorAction SilentlyContinue }
+            $redirect.Dispose()
+        }
+        $noteWindow = (Get-AppWindows $app.Id | Where-Object title -eq '横线输入便签')[0]
+        Wait-ForCondition {
+            $focused = winapp ui get-focused -w $noteWindow.hwnd --json 2>$null | ConvertFrom-Json
+            return $focused.hasFocus -and $focused.element.type -ne 'Button'
+        } 'The opened note editor did not receive keyboard focus.'
+        $ruledToggle = @((winapp ui search 'NoteRuledLines' -w $noteWindow.hwnd --json 2>$null |
+            ConvertFrom-Json).matches | Where-Object automationId -like 'NoteRuledLines-*')[0]
+        if ($null -eq $ruledToggle) { throw 'The ruled-lines toggle was not exposed to UI Automation.' }
+        winapp ui invoke $ruledToggle.selector -w $noteWindow.hwnd | Out-Null
+        Wait-ForCondition {
+            if (-not (Test-Path -LiteralPath $ruledPortablePath)) { return $false }
+            try { return (Get-Content -LiteralPath $ruledPortablePath -Raw | ConvertFrom-Json).showRuledLines -eq $true }
+            catch { return $false }
+        } `
+            'Ruled lines were not enabled for the spacing check.'
+
+        $defaultShot = Join-Path $runRoot 'ruled-lines-default.png'
+        $inputShot = Join-Path $runRoot 'ruled-lines-input.png'
+        winapp ui screenshot -w $noteWindow.hwnd -o $defaultShot | Out-Null
+        $editorText = (winapp ui search '中文 gjpqy' -w $noteWindow.hwnd --json 2>$null | ConvertFrom-Json).matches[0]
+        if ($null -eq $editorText) { throw 'The ruled-lines sample text was not exposed to UI Automation.' }
+        $inputProbe = '键盘输入探针123'
+        winapp ui send-keys 'ctrl+end' -w $noteWindow.hwnd | Out-Null
+        winapp ui send-keys --verbatim $inputProbe -w $noteWindow.hwnd | Out-Null
+        Wait-ForCondition {
+            if (-not (Test-Path -LiteralPath $ruledPortablePath)) { return $false }
+            try { return (Get-Content -LiteralPath $ruledPortablePath -Raw | ConvertFrom-Json).html -like "*$inputProbe*" }
+            catch { return $false }
+        } 'Typing into the note editor did not update the persisted note body.'
+        winapp ui screenshot -w $noteWindow.hwnd -o $inputShot | Out-Null
+        if ((Get-Item -LiteralPath $defaultShot).Length -eq 0 -or (Get-Item -LiteralPath $inputShot).Length -eq 0) {
+            throw 'The ruled-lines screenshots were not created.'
+        }
+        Write-Host 'TuckPane ruled-lines and editor input UI: PASS'
+        return
+    }
+
+    if ($ActivationOnly) {
+        $portablePath = Join-Path $storage '中文 便签.tucknote'
+        [IO.File]::WriteAllText($portablePath,
+            '{"format":"TuckPane.Note","version":1,"theme":3,"fontSize":14,"showRuledLines":false,"placement":null,"html":"redirected"}',
+            [Text.UTF8Encoding]::new($false))
+        $redirect = Start-Process -FilePath $resolvedExe -ArgumentList ('"{0}"' -f $portablePath) -PassThru
+        try {
+            Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq '中文 便签').Count -eq 1 } `
+                'A redirected .tucknote path containing Chinese and spaces did not open in the primary instance.'
+        }
+        finally {
+            if (-not $redirect.HasExited) { Stop-Process -Id $redirect.Id -Force -ErrorAction SilentlyContinue }
+            $redirect.Dispose()
+        }
+        Write-Host 'TuckPane redirected portable-note activation: PASS'
+        return
+    }
+
+    if ($PortableNoteOnly) {
+        winapp ui wait-for $portableSelector -w $main.hwnd --timeout 3000 | Out-Null
+        $sourceItem = @((winapp ui search $portableSelector -w $main.hwnd --json 2>$null | ConvertFrom-Json).matches)[0]
+        Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object hwnd -eq $targetMain.hwnd).width -lt 200 } `
+            'The portable-note target organizer did not collapse before the cross-window drag.'
+        $targetMain = @(Get-AppWindows $app.Id | Where-Object hwnd -eq $targetMain.hwnd)[0]
+        Set-ProbeForeground $main.hwnd
+        $sourceX = [int]($sourceItem.x + $sourceItem.width / 2)
+        $sourceY = [int]($sourceItem.y + $sourceItem.height / 2)
+        [TuckPaneNoteInput]::MoveAbsolute($sourceX, $sourceY)
+        $hit = [TuckPaneNoteInput]::WindowFromPoint([TuckPaneNoteInput+Point]@{ X = $sourceX; Y = $sourceY })
+        $hitProcess = [uint32]0
+        [TuckPaneNoteInput]::GetWindowThreadProcessId($hit, [ref]$hitProcess) | Out-Null
+        if ($hitProcess -ne $app.Id) { throw "The portable-note drag source is covered by PID $hitProcess." }
+        $targetRect = [TuckPaneNoteInput+Rect]::new()
+        [TuckPaneNoteInput]::GetWindowRect([IntPtr]$targetMain.hwnd, [ref]$targetRect) | Out-Null
+        $targetX = [int](($targetRect.Left + $targetRect.Right) / 2)
+        $targetY = [int](($targetRect.Top + $targetRect.Bottom) / 2)
+        Invoke-MouseDrag $sourceX $sourceY `
+            $targetX $targetY
+        $movedPath = Join-Path $targetStorage $portableFileName
+        Wait-ForCondition {
+            (Test-Path -LiteralPath $movedPath) -and
+            -not (Test-Path -LiteralPath $portablePath) -and
+            (Get-State).Organizers[1].ItemOrder[0] -eq $portableFileName
+        } 'Moving a portable note between organizers did not move the real file and target ItemOrder.'
+        $main = $targetMain
+        $portablePath = $movedPath
+        winapp ui wait-for $portableSelector -w $main.hwnd --timeout 3000 | Out-Null
+        winapp ui screenshot -w $main.hwnd -o (Join-Path $runRoot 'portable-note-grid.png') | Out-Null
+        winapp ui click $portableSelector -w $main.hwnd | Out-Null
+        Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq '便签 文件').Count -eq 1 } `
+            'Single-clicking a portable note did not open it like an internal note.'
+        $portableWindow = (Get-AppWindows $app.Id | Where-Object title -eq '便签 文件')[0]
+        $title = @((winapp ui search '便签 文件' -w $portableWindow.hwnd --json 2>$null |
+            ConvertFrom-Json).matches | Where-Object automationId -like 'NoteTitle-*')[0]
+        if ($null -eq $title) { throw 'The portable note title was not exposed to UI Automation.' }
+        Set-ProbeForeground $portableWindow.hwnd
+        winapp ui click $title.selector -w $portableWindow.hwnd --double | Out-Null
+        $editorId = $title.automationId.Replace('NoteTitle-', 'NoteTitleEditor-')
+        winapp ui wait-for $editorId -w $portableWindow.hwnd --timeout 3000 | Out-Null
+        winapp ui set-value $editorId '改名便签' -w $portableWindow.hwnd | Out-Null
+        $colorId = $title.automationId.Replace('NoteTitle-', 'NoteColor-')
+        winapp ui focus $colorId -w $portableWindow.hwnd | Out-Null
+        $renamedPath = Join-Path $targetStorage '改名便签.tucknote'
+        Wait-ForCondition {
+            (Test-Path -LiteralPath $renamedPath) -and
+            -not (Test-Path -LiteralPath $portablePath) -and
+            (Get-State).Organizers[1].ItemOrder[0] -eq '改名便签.tucknote'
+        } 'Renaming a portable note did not update the file and preserve its ItemOrder position.'
+        Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq '改名便签').Count -eq 1 } `
+            'Renaming a portable note did not update its open window title.'
+        $collisionPath = Join-Path $targetStorage '已有便签.tucknote'
+        [IO.File]::WriteAllText($collisionPath,
+            '{"format":"TuckPane.Note","version":1,"theme":3,"fontSize":14,"showRuledLines":false,"placement":null,"html":"collision"}',
+            [Text.UTF8Encoding]::new($false))
+        $title = @((winapp ui search '改名便签' -w $portableWindow.hwnd --json 2>$null |
+            ConvertFrom-Json).matches | Where-Object automationId -like 'NoteTitle-*')[0]
+        winapp ui click $title.selector -w $portableWindow.hwnd --double | Out-Null
+        winapp ui wait-for $editorId -w $portableWindow.hwnd --timeout 3000 | Out-Null
+        winapp ui set-value $editorId '已有便签' -w $portableWindow.hwnd | Out-Null
+        winapp ui focus $colorId -w $portableWindow.hwnd | Out-Null
+        Start-Sleep -Milliseconds 400
+        $sourceStillExists = Test-Path -LiteralPath $renamedPath
+        $orderStillMatches = (Get-State).Organizers[1].ItemOrder[0] -eq '改名便签.tucknote'
+        if (-not $sourceStillExists -or -not $orderStillMatches) {
+            throw 'A duplicate portable-note name replaced the original file or order entry.'
+        }
+        winapp ui set-value $editorId 'CON' -w $portableWindow.hwnd | Out-Null
+        winapp ui focus $colorId -w $portableWindow.hwnd | Out-Null
+        Start-Sleep -Milliseconds 400
+        if (Test-Path -LiteralPath (Join-Path $targetStorage 'CON.tucknote')) {
+            throw 'A reserved Windows file name was accepted for a portable note.'
+        }
+        winapp ui set-value $editorId '取消名称' -w $portableWindow.hwnd | Out-Null
+        winapp ui send-keys escape -w $portableWindow.hwnd | Out-Null
+        Start-Sleep -Milliseconds 200
+        $renamedWindowCount = (Get-AppWindows $app.Id | Where-Object title -eq '改名便签').Count
+        $cancelledPathExists = Test-Path -LiteralPath (Join-Path $targetStorage '取消名称.tucknote')
+        if ($renamedWindowCount -ne 1 -or $cancelledPathExists) {
+            throw 'Escape did not cancel portable-note renaming.'
+        }
+        Write-Host 'TuckPane portable-note parity and rename boundaries: PASS'
+        return
+    }
+
+    $collapse = (winapp ui search CollapseButton -w $main.hwnd --json 2>$null | ConvertFrom-Json).matches[0]
+    $blankX = [int]($collapse.x - 200)
+    $blankY = [int]($collapse.y + 200)
+    $clipboardText = "第一行`r`n  第二行 <>&"
+    Set-Clipboard -Value $clipboardText
+    $newNoteInvoked = $false
+    foreach ($attempt in 1..3) {
+        Set-ProbeForeground $main.hwnd
+        winapp ui drag "$blankX,$blankY" "$blankX,$blankY" -w $main.hwnd --right --hold-ms 60 | Out-Null
+        Start-Sleep -Milliseconds 250
+        $menu = winapp ui search NewNoteMenuItem -w $main.hwnd --json 2>$null | ConvertFrom-Json
+        if ($menu.matchCount -gt 0) {
+            winapp ui invoke NewNoteMenuItem -w $main.hwnd | Out-Null
+            if ($LASTEXITCODE -eq 0) { $newNoteInvoked = $true; break }
+        }
+        winapp ui send-keys escape -w $main.hwnd | Out-Null
+    }
+    if (-not $newNoteInvoked) { throw 'The background New note command could not be invoked.' }
+    Wait-ForCondition { (Get-State).Organizers[0].Notes.Count -eq 1 } 'New note was not persisted.'
+
+    $note = (Get-State).Organizers[0].Notes[0]
+    if ($note.ShowRuledLines -eq $true) { throw 'New notes should start without ruled lines.' }
+    $id = ([Guid]$note.Id).ToString('N')
+    $notePath = Join-Path $local "notes\$id.json"
+    Wait-ForCondition { Test-Path -LiteralPath $notePath } 'New note document was not created.'
+    if ((Get-Content -LiteralPath $notePath -Raw | ConvertFrom-Json).Html -ne '') {
+        throw 'New note imported clipboard text instead of remaining blank.'
+    }
+
+    # Keep the reported regression first: this path skips clipboard, image, rename, and delete checks.
+    $selector = "NoteItem-$id"
+    winapp ui wait-for $selector -w $main.hwnd --timeout 3000 | Out-Null
+    if ($TitleDragOnly) { winapp ui screenshot -w $main.hwnd -o (Join-Path $runRoot 'internal-note-grid.png') | Out-Null }
+    winapp ui click $selector -w $main.hwnd | Out-Null
+    Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq $note.Name).Count -eq 1 } 'Single click did not open the note.'
+    $noteWindow = (Get-AppWindows $app.Id | Where-Object title -eq $note.Name)[0]
+    winapp ui wait-for "NoteColor-$id" -w $noteWindow.hwnd --timeout 5000 | Out-Null
+    winapp ui wait-for "NoteRuledLines-$id" -w $noteWindow.hwnd --timeout 5000 | Out-Null
+    winapp ui wait-for "CloseNote-$id" -w $noteWindow.hwnd --timeout 5000 | Out-Null
+
+    $beforePlacement = (Get-State).Organizers[0].Notes[0].Placement
+    $beforeRect = [TuckPaneNoteInput+Rect]::new()
+    [TuckPaneNoteInput]::GetWindowRect([IntPtr]$noteWindow.hwnd, [ref]$beforeRect) | Out-Null
+    $scale = [Math]::Max(1.0, [double][TuckPaneNoteInput]::GetDpiForWindow([IntPtr]$noteWindow.hwnd) / 96.0)
+    $fromX = [int]($beforeRect.Left + 80 * $scale)
+    $fromY = [int]($beforeRect.Top + 22 * $scale)
+    $toX = $fromX + 110
+    $toY = $fromY + 90
+    Set-ProbeForeground $noteWindow.hwnd
+    [TuckPaneNoteInput]::SetCursorPos($fromX, $fromY) | Out-Null
+    [TuckPaneNoteInput]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 60
+    foreach ($step in 1..16) {
+        [TuckPaneNoteInput]::SetCursorPos(
+            [int]($fromX + ($toX - $fromX) * $step / 16),
+            [int]($fromY + ($toY - $fromY) * $step / 16)) | Out-Null
+        Start-Sleep -Milliseconds 12
+    }
+    [TuckPaneNoteInput]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 300
+
+    $afterRect = [TuckPaneNoteInput+Rect]::new()
+    [TuckPaneNoteInput]::GetWindowRect([IntPtr]$noteWindow.hwnd, [ref]$afterRect) | Out-Null
+    if ([Math]::Abs($afterRect.Left - $beforeRect.Left) -le 2 -and
+        [Math]::Abs($afterRect.Top - $beforeRect.Top) -le 2) {
+        throw "Dragging the dark title region did not move the note from $($beforeRect.Left),$($beforeRect.Top); start=$fromX,$fromY."
+    }
+    Wait-ForCondition {
+        $afterPlacement = (Get-State).Organizers[0].Notes[0].Placement
+        if ($null -eq $afterPlacement) { return $false }
+        if ($null -eq $beforePlacement) { return $true }
+        [Math]::Abs($afterPlacement.XDip - $beforePlacement.XDip) -gt 2 -or
+            [Math]::Abs($afterPlacement.YDip - $beforePlacement.YDip) -gt 2
+    } 'Dragging the dark title region moved the window but did not persist its position.'
+
+    $buttonRect = [TuckPaneNoteInput+Rect]::new()
+    winapp ui invoke "NoteColor-$id" -w $noteWindow.hwnd | Out-Null
+    Start-Sleep -Milliseconds 150
+    [TuckPaneNoteInput]::GetWindowRect([IntPtr]$noteWindow.hwnd, [ref]$buttonRect) | Out-Null
+    if ($buttonRect.Left -ne $afterRect.Left -or $buttonRect.Top -ne $afterRect.Top) {
+        throw 'Invoking a title-bar button moved the note window.'
+    }
+    winapp ui send-keys escape -w $noteWindow.hwnd | Out-Null
+    if ($TitleDragOnly) {
+        $title = @((winapp ui search $note.Name -w $noteWindow.hwnd --json 2>$null |
+            ConvertFrom-Json).matches | Where-Object automationId -like 'NoteTitle-*')[0]
+        winapp ui click $title.selector -w $noteWindow.hwnd --double | Out-Null
+        $titleEditor = "NoteTitleEditor-$id"
+        $longTitle = '这是一个足以占满标题栏的超长内部便签名称'
+        winapp ui wait-for $titleEditor -w $noteWindow.hwnd --timeout 3000 | Out-Null
+        winapp ui set-value $titleEditor $longTitle -w $noteWindow.hwnd | Out-Null
+        winapp ui focus "NoteColor-$id" -w $noteWindow.hwnd | Out-Null
+        Wait-ForCondition {
+            (Get-State).Organizers[0].Notes[0].Name -eq $longTitle -and
+            (Get-State).Organizers[0].ItemOrder[0] -eq "note:$id"
+        } 'Inline renaming an internal note did not update its title while preserving ItemOrder.'
+        Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq $longTitle).Count -eq 1 } `
+            'Inline renaming an internal note did not update its window title.'
+        $title = @((winapp ui search $longTitle -w $noteWindow.hwnd --json 2>$null |
+            ConvertFrom-Json).matches | Where-Object automationId -like 'NoteTitle-*')[0]
+        winapp ui click $title.selector -w $noteWindow.hwnd --double | Out-Null
+        winapp ui wait-for $titleEditor -w $noteWindow.hwnd --timeout 3000 | Out-Null
+        winapp ui set-value $titleEditor '取消改名' -w $noteWindow.hwnd | Out-Null
+        winapp ui send-keys escape -w $noteWindow.hwnd | Out-Null
+        Start-Sleep -Milliseconds 200
+        if ((Get-State).Organizers[0].Notes[0].Name -ne $longTitle) { throw 'Escape did not cancel inline note renaming.' }
+        winapp ui send-keys f2 -w $noteWindow.hwnd | Out-Null
+        winapp ui wait-for $titleEditor -w $noteWindow.hwnd --timeout 3000 | Out-Null
+        winapp ui send-keys escape -w $noteWindow.hwnd | Out-Null
+        $longBefore = [TuckPaneNoteInput+Rect]::new()
+        [TuckPaneNoteInput]::GetWindowRect([IntPtr]$noteWindow.hwnd, [ref]$longBefore) | Out-Null
+        $color = (winapp ui search "NoteColor-$id" -w $noteWindow.hwnd --json 2>$null | ConvertFrom-Json).matches[0]
+        winapp ui drag "$([int]($color.x - 24)),$([int]($color.y + $color.height / 2))" `
+            "$([int]($color.x + 46)),$([int]($color.y + $color.height / 2 + 50))" -w $noteWindow.hwnd | Out-Null
+        $longAfter = [TuckPaneNoteInput+Rect]::new()
+        [TuckPaneNoteInput]::GetWindowRect([IntPtr]$noteWindow.hwnd, [ref]$longAfter) | Out-Null
+        if ($longAfter.Left -eq $longBefore.Left -and $longAfter.Top -eq $longBefore.Top) {
+            throw 'A long note title consumed the entire draggable caption region.'
+        }
+        winapp ui invoke "CloseNote-$id" -w $noteWindow.hwnd | Out-Null
+        Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq $longTitle).Count -eq 0 } `
+            'Close did not hide the note after the title-drag check.'
+        Write-Host 'TuckPane dark-title drag and internal rename UI: PASS'
+        return
+    }
+    winapp ui invoke "CloseNote-$id" -w $noteWindow.hwnd | Out-Null
+    Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq $note.Name).Count -eq 0 } 'Close did not hide the note after the title-drag check.'
+
+    $pasteInvoked = $false
+    foreach ($attempt in 1..3) {
+        Set-ProbeForeground $main.hwnd
+        winapp ui drag "$blankX,$blankY" "$blankX,$blankY" -w $main.hwnd --right --hold-ms 60 | Out-Null
+        Start-Sleep -Milliseconds 250
+        $menu = winapp ui search PasteMenuItem -w $main.hwnd --json 2>$null | ConvertFrom-Json
+        if ($menu.matchCount -gt 0) {
+            winapp ui invoke PasteMenuItem -w $main.hwnd | Out-Null
+            if ($LASTEXITCODE -eq 0) { $pasteInvoked = $true; break }
+        }
+        winapp ui send-keys escape -w $main.hwnd | Out-Null
+    }
+    if (-not $pasteInvoked) { throw 'The background Paste command was not enabled for clipboard text.' }
+    Wait-ForCondition { (Get-State).Organizers[0].Notes.Count -eq 2 } 'Pasting clipboard text did not create a note.'
+    $pastedNote = @((Get-State).Organizers[0].Notes | Where-Object Id -ne $note.Id)[0]
+    $pastedId = ([Guid]$pastedNote.Id).ToString('N')
+    $pastedPath = Join-Path $local "notes\$pastedId.json"
+    Wait-ForCondition { Test-Path -LiteralPath $pastedPath } 'Pasted note document was not created.'
+    if ((Get-Content -LiteralPath $pastedPath -Raw | ConvertFrom-Json).Html -cne '第一行<br>  第二行 &lt;&gt;&amp;') {
+        throw 'Pasted note did not preserve multiline plain text, indentation, or escaped symbols.'
+    }
+    Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq $pastedNote.Name).Count -eq 1 } 'Pasted note did not open immediately.'
+
+    $pastedSelector = "NoteItem-$pastedId"
+    winapp ui wait-for $pastedSelector -w $main.hwnd --timeout 3000 | Out-Null
+    Open-NoteContextMenu $main.hwnd $pastedSelector
+    winapp ui invoke DeleteNoteMenuItem -w $main.hwnd | Out-Null
+    Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq '删除便签').Count -eq 1 } 'Pasted-note delete confirmation did not appear.'
+    $deleteDialog = (Get-AppWindows $app.Id | Where-Object title -eq '删除便签')[0]
+    winapp ui invoke '删除' -w $deleteDialog.hwnd | Out-Null
+    Wait-ForCondition { (Get-State).Organizers[0].Notes.Count -eq 1 } 'Pasted note was not removed after its clipboard checks.'
+
+    Set-Clipboard -Value " `r`n`t"
+    Set-ProbeForeground $main.hwnd
+    winapp ui drag "$blankX,$blankY" "$blankX,$blankY" -w $main.hwnd --right --hold-ms 60 | Out-Null
+    Start-Sleep -Milliseconds 250
+    winapp ui invoke PasteMenuItem -w $main.hwnd | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'The background Paste command was unavailable for whitespace-only text.' }
+    Start-Sleep -Milliseconds 300
+    if ((Get-State).Organizers[0].Notes.Count -ne 1) { throw 'Whitespace-only clipboard text created a note.' }
+
+    $onePixelPng = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1EAAAAASUVORK5CYII='
+    [IO.File]::WriteAllText($notePath,
+        (@{ Version = 1; Html = "<img src=`"data:image/png;base64,$onePixelPng`" style=`"width: 96px;`">" } |
+            ConvertTo-Json -Compress), [Text.UTF8Encoding]::new($false))
+    winapp ui wait-for $selector -w $main.hwnd --timeout 3000 | Out-Null
+    winapp ui focus CollapseButton -w $main.hwnd | Out-Null
+    winapp ui click $selector -w $main.hwnd | Out-Null
+    Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq $note.Name).Count -eq 1 } 'Single click did not open the note.'
+    $noteWindow = (Get-AppWindows $app.Id | Where-Object title -eq $note.Name)[0]
+    winapp ui wait-for "NoteColor-$id" -w $noteWindow.hwnd --timeout 5000 | Out-Null
+    winapp ui wait-for "NoteRuledLines-$id" -w $noteWindow.hwnd --timeout 5000 | Out-Null
+    winapp ui wait-for "CloseNote-$id" -w $noteWindow.hwnd --timeout 5000 | Out-Null
+    $extendedStyle = [TuckPaneNoteInput]::GetWindowLongPtr([IntPtr]$noteWindow.hwnd, -20).ToInt64()
+    $windowStyle = [TuckPaneNoteInput]::GetWindowLongPtr([IntPtr]$noteWindow.hwnd, -16).ToInt64()
+    if (($extendedStyle -band 0x8) -eq 0 -or ($extendedStyle -band 0x80) -eq 0 -or
+        ($extendedStyle -band 0x40000) -ne 0 -or ($windowStyle -band 0x40000) -eq 0) {
+        throw 'The note is not a topmost, resizable tool window hidden from switchers.'
+    }
+    $monitor = [TuckPaneNoteInput]::MonitorFromWindow([IntPtr]$noteWindow.hwnd, 2)
+    [int]$scalePercent = 100
+    if ([TuckPaneNoteInput]::GetScaleFactorForMonitor($monitor, [ref]$scalePercent) -ne 0) {
+        throw 'Could not read the note monitor scale.'
+    }
+    $scale = [Math]::Max(1.0, [double]$scalePercent / 100.0)
+    if ([Math]::Abs($noteWindow.width / $scale - 360) -gt 3 -or
+        [Math]::Abs($noteWindow.height / $scale - 300) -gt 3) {
+        throw "Unexpected initial note size: $($noteWindow.width)x$($noteWindow.height) px at $scalePercent%."
+    }
+
+    Wait-ForCondition {
+        (winapp ui search '粘贴的图片' -w $noteWindow.hwnd --json 2>$null | ConvertFrom-Json).matchCount -gt 0
+    } 'The persisted inline image did not render.' 5000
+    $image = (winapp ui search '粘贴的图片' -w $noteWindow.hwnd --json 2>$null | ConvertFrom-Json).matches[0]
+    winapp ui click $image.selector -w $noteWindow.hwnd | Out-Null
+    winapp ui send-keys 'alt+right' -w $noteWindow.hwnd --via send-input | Out-Null
+    Wait-ForCondition { ((Get-Content -LiteralPath $notePath -Raw | ConvertFrom-Json).Html -like '*width: 104px*') } 'Keyboard image resizing was not persisted.'
+    Set-ProbeForeground $noteWindow.hwnd
+    winapp ui click $image.selector -w $noteWindow.hwnd | Out-Null
+    Start-Sleep -Milliseconds 150
+    [TuckPaneNoteInput]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
+    try {
+        winapp ui scroll $image.selector -w $noteWindow.hwnd --wheel 1 | Out-Null
+    }
+    finally {
+        [TuckPaneNoteInput]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
+    }
+    Wait-ForCondition { (Get-State).Organizers[0].Notes[0].FontSize -eq 15 } 'Ctrl+wheel did not persist the note font size.'
+
+    winapp ui invoke "NoteRuledLines-$id" -w $noteWindow.hwnd | Out-Null
+    Wait-ForCondition { (Get-State).Organizers[0].Notes[0].ShowRuledLines -eq $true } 'Ruled lines were not enabled and persisted.'
+
+    winapp ui invoke "NoteColor-$id" -w $noteWindow.hwnd | Out-Null
+    Start-Sleep -Milliseconds 250
+    $themeItems = @((winapp ui inspect -a $app.Id --interactive --json 2>$null | ConvertFrom-Json).windows.elements |
+        Where-Object automationId -like 'NoteTheme-*')
+    if ($themeItems.Count -ne 7) { throw "Expected seven note colors, found $($themeItems.Count)." }
+    winapp ui send-keys escape -w $noteWindow.hwnd | Out-Null
+
+    winapp ui screenshot -w $noteWindow.hwnd -o (Join-Path $runRoot 'note-window.png') | Out-Null
+    winapp ui invoke "CloseNote-$id" -w $noteWindow.hwnd | Out-Null
+    Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq $note.Name).Count -eq 0 } 'Close did not hide the note.'
+    if ((Get-State).Organizers[0].Notes.Count -ne 1) { throw 'Closing the note deleted its icon.' }
+
+    Stop-Process -Id $app.Id -Force
+    $app.WaitForExit(5000) | Out-Null
+    $app.Dispose()
+    $app = Start-Process -FilePath $resolvedExe -ArgumentList '--startup' -PassThru
+    Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq 'TuckPane').Count -eq 1 } 'Organizer did not restart.'
+    if ((Get-AppWindows $app.Id | Where-Object title -eq $note.Name).Count -ne 0) { throw 'A note reopened automatically after restart.' }
+    $main = (Get-AppWindows $app.Id | Where-Object title -eq 'TuckPane')[0]
+    winapp ui wait-for $selector -w $main.hwnd --timeout 5000 | Out-Null
+    if ((Get-State).Organizers[0].Notes[0].FontSize -ne 15 -or
+        (Get-State).Organizers[0].Notes[0].ShowRuledLines -ne $true -or
+        (Get-Content -LiteralPath $notePath -Raw | ConvertFrom-Json).Html -notlike '*width: 104px*') {
+        throw 'Note content, image size, font size, or ruled-lines state did not survive restart.'
+    }
+
+    Open-NoteContextMenu $main.hwnd $selector
+    winapp ui invoke RenameNoteMenuItem -w $main.hwnd | Out-Null
+    Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq '重命名便签').Count -eq 1 } 'Rename dialog did not appear.'
+    $renameDialog = (Get-AppWindows $app.Id | Where-Object title -eq '重命名便签')[0]
+    $input = @((winapp ui inspect -w $renameDialog.hwnd --interactive --json 2>$null | ConvertFrom-Json).windows.elements |
+        Where-Object type -eq 'Edit')[0]
+    winapp ui set-value $input.selector '工作便签' -w $renameDialog.hwnd | Out-Null
+    winapp ui invoke '重命名' -w $renameDialog.hwnd | Out-Null
+    Wait-ForCondition { (Get-State).Organizers[0].Notes[0].Name -eq '工作便签' } 'Renamed note was not persisted.'
+
+    Open-NoteContextMenu $main.hwnd $selector
+    winapp ui invoke DeleteNoteMenuItem -w $main.hwnd | Out-Null
+    Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq '删除便签').Count -eq 1 } 'Delete confirmation did not appear.'
+    $deleteDialog = (Get-AppWindows $app.Id | Where-Object title -eq '删除便签')[0]
+    winapp ui invoke '取消' -w $deleteDialog.hwnd | Out-Null
+    if ((Get-State).Organizers[0].Notes.Count -ne 1) { throw 'Cancelling delete removed the note.' }
+
+    Open-NoteContextMenu $main.hwnd $selector
+    winapp ui invoke DeleteNoteMenuItem -w $main.hwnd | Out-Null
+    Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq '删除便签').Count -eq 1 } 'Second delete confirmation did not appear.'
+    $deleteDialog = (Get-AppWindows $app.Id | Where-Object title -eq '删除便签')[0]
+    winapp ui invoke '删除' -w $deleteDialog.hwnd | Out-Null
+    Wait-ForCondition { (Get-State).Organizers[0].Notes.Count -eq 0 } 'Confirmed delete did not remove the note.'
+    if (Test-Path -LiteralPath (Join-Path $local "notes\$id.json")) { throw 'Confirmed delete left the note document behind.' }
+
+    Write-Host 'TuckPane note real UI flow: PASS'
+}
+finally {
+    if ($app -and -not $app.HasExited) { Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue }
+    if ($app) { $app.Dispose() }
+    $env:TUCKPANE_TEST_ROOT = $originalRoot
+    $env:GLASSFOLDER_TEST_EXPANDED = $originalExpanded
+    Set-Clipboard -Value ($originalClipboardText ?? '')
+    if ($KeepRoot) { Write-Host "Kept test root: $runRoot" }
+    elseif (Test-Path -LiteralPath $runRoot) {
+        $resolvedRoot = [IO.Path]::GetFullPath($runRoot)
+        $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+        if (-not $resolvedRoot.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -or
+            -not [IO.Path]::GetFileName($resolvedRoot).StartsWith('TuckPane-note-ui-', [StringComparison]::Ordinal)) {
+            throw "Refusing to delete unexpected test root: $resolvedRoot"
+        }
+        [IO.Directory]::Delete($resolvedRoot, $true)
+    }
+}

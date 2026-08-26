@@ -59,6 +59,7 @@ internal static class NativeMethods
     internal const uint WM_NCLBUTTONDOWN = 0x00A1;
     internal const uint WM_NCLBUTTONUP = 0x00A2;
     internal const int HTCLIENT = 1;
+    internal const int HTCAPTION = 2;
     internal const int HTLEFT = 10;
     internal const int HTRIGHT = 11;
     internal const int HTTOP = 12;
@@ -407,6 +408,14 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool EnableWindow(IntPtr hWnd, [MarshalAs(UnmanagedType.Bool)] bool enable);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool IsWindowEnabled(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool RedrawWindow(IntPtr hWnd, IntPtr updateRect, IntPtr updateRegion, uint flags);
 
     [DllImport("user32.dll")]
@@ -493,6 +502,12 @@ internal static class NativeMethods
 
     [DllImport("kernel32.dll")]
     internal static extern uint GetCurrentThreadId();
+
+    [DllImport("shell32.dll", EntryPoint = "CommandLineToArgvW", CharSet = CharSet.Unicode, SetLastError = true)]
+    internal static extern IntPtr CommandLineToArgvW(string commandLine, out int argumentCount);
+
+    [DllImport("kernel32.dll")]
+    internal static extern IntPtr LocalFree(IntPtr memory);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     internal static extern IntPtr OpenProcess(uint desiredAccess, [MarshalAs(UnmanagedType.Bool)] bool inheritHandle, uint processId);

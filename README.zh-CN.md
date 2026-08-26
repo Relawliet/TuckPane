@@ -36,26 +36,28 @@ TuckPane 是一款 Windows 11 x64 桌面文件收纳工具。它把真实文件�
 
 ### 快捷功能
 
-可以直接把文件和文件夹拖入收纳窗，通过右键菜单管理窗口，按住 `Ctrl` 并滚动鼠标调整内容大小，选择点击窗口外自动收缩，并让 TuckPane 安静驻留在系统托盘中。
+可以直接把文件和文件夹拖入收纳窗，从显示器边缘呼出中转站，在真实文件旁创建便签，按住 `Ctrl` 并滚动鼠标调整内容大小，并让 TuckPane 安静驻留在系统托盘中。
 
 ## 功能
 
-- 最多创建 12 个相互独立的收纳窗口，并在悬浮模式和桌面定位模式之间切换。
-- 支持拖入文件、文件夹、应用快捷方式和 Steam `.url` 快捷方式；Windows 提供原始图标时会正常保留。
+- 最多创建 12 个普通收纳窗，可使用悬浮或桌面定位模式；还可创建贴靠屏幕边缘、呼出时不抢键盘焦点的中转站。
+- 可创建包含文字和粘贴图片的便签，支持七种主题、正文横线、标题内联改名和窗口位置保存；还可导出或直接打开便携 `.tucknote` 文件。
+- 文件、文件夹、应用快捷方式、Steam `.url` 快捷方式和便携便签可在收纳窗或标准 Windows 目标之间拖动，并协商复制、移动或创建链接。
 - 展开画布可从四边和四角等比例拉伸，尺寸和内容布局会自动保存。
 - 鼠标位于展开画布内时，可用 `Ctrl + 滚轮` 调整图标、文件名和间距比例。
-- 可选择在点击窗口外时自动收缩；这次点击仍会传递给桌面或目标程序。
-- 右键可打开设置、复制空白窗口、切换模式、重命名、打开收纳目录或删除窗口。
+- 普通收纳窗可选择悬浮后展开、鼠标离开后收缩，也可设置是否只允许一个窗口保持展开。
+- 支持粘贴文件、新建文件夹、通过 Windows 剪贴板剪切项目，以及把真实文件移入回收站。
+- 右键可打开设置、复制空白窗口、切换模式、重命名、打开收纳目录或安全删除窗口。
 - 支持浅色、灰色、纯浅色和纯深色主题，以及 English、简体中文、日本語界面。
 - 启动后只驻留系统托盘。关闭设置窗口只会隐藏；只有托盘菜单中的“退出”会结束 TuckPane。
 
 ## 下载
 
-当前版本：**1.0.11**。完整发布说明请查看 [Latest Release](https://github.com/ch998244353/TuckPane/releases/latest)。
+当前版本：**2.0.0**。完整发布说明请查看 [Latest Release](https://github.com/ch998244353/TuckPane/releases/latest)。
 
-- [TuckPane-1.0.11-win-x64-setup.exe](https://github.com/ch998244353/TuckPane/releases/download/v1.0.11/TuckPane-1.0.11-win-x64-setup.exe)：当前用户离线安装器，创建开始菜单和桌面快捷方式。
-- [TuckPane-1.0.11-win-x64-portable.zip](https://github.com/ch998244353/TuckPane/releases/download/v1.0.11/TuckPane-1.0.11-win-x64-portable.zip)：解压后双击 `00-启动 TuckPane.exe`。
-- [SHA256SUMS.txt](https://github.com/ch998244353/TuckPane/releases/download/v1.0.11/SHA256SUMS.txt)：两个下载文件的 SHA-256 校验值。
+- [TuckPane-2.0.0-win-x64-setup.exe](https://github.com/ch998244353/TuckPane/releases/download/v2.0.0/TuckPane-2.0.0-win-x64-setup.exe)：当前用户离线安装器，创建开始菜单和桌面快捷方式。
+- [TuckPane-2.0.0-win-x64-portable.zip](https://github.com/ch998244353/TuckPane/releases/download/v2.0.0/TuckPane-2.0.0-win-x64-portable.zip)：解压后双击 `00-启动 TuckPane.exe`。
+- [SHA256SUMS.txt](https://github.com/ch998244353/TuckPane/releases/download/v2.0.0/SHA256SUMS.txt)：两个下载文件的 SHA-256 校验值。
 
 两种版本均自带 .NET 与 Windows App SDK，不需要另行安装运行环境。当前安装器未进行代码签名，Windows SmartScreen 可能显示“未知发布者”；需要时可使用 `SHA256SUMS.txt` 校验下载文件。
 

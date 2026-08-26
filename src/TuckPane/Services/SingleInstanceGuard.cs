@@ -47,7 +47,7 @@ public sealed class SingleInstanceGuard : IDisposable
     public static void ShowLegacyInstanceMessage() => MessageBox(
         IntPtr.Zero,
         AppStrings.Get("LegacyInstanceMessage"),
-        "TuckPane 1.0.0",
+        "TuckPane",
         0x00000030);
 
     public void Dispose()

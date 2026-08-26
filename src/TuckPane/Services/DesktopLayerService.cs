@@ -10,6 +10,7 @@ public sealed class DesktopLayerService : IDisposable
     private IntPtr _desktopIconView;
     private bool _allowActivation;
     private bool _expanded;
+    private bool _stayTopmost;
 
     public DesktopLayerService(IntPtr window, IntPtr expandedOwner)
     {
@@ -36,7 +37,7 @@ public sealed class DesktopLayerService : IDisposable
 
             _ = NativeMethods.SetWindowPos(
                 _window,
-                NativeMethods.HWND_TOP,
+                _stayTopmost ? NativeMethods.HWND_TOPMOST : NativeMethods.HWND_TOP,
                 0,
                 0,
                 0,
@@ -65,11 +66,24 @@ public sealed class DesktopLayerService : IDisposable
             NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
     }
 
-    public void SetExpanded(bool expanded)
+    public void SetExpanded(bool expanded, bool stayTopmost = false)
     {
+        if (!expanded && _stayTopmost)
+        {
+            _ = NativeMethods.SetWindowPos(
+                _window,
+                NativeMethods.HWND_NOTOPMOST,
+                0,
+                0,
+                0,
+                0,
+                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+        }
+
         _expanded = expanded;
+        _stayTopmost = expanded && stayTopmost;
         Reattach();
-        if (expanded) RaiseAboveNormalWindows();
+        if (expanded && !stayTopmost) RaiseAboveNormalWindows();
     }
 
     public void BringAboveDesktopPeers()

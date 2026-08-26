@@ -11,12 +11,14 @@ internal static class GlassThemePalette
 {
     internal static bool IsSolid(GlassTheme theme) => theme is GlassTheme.SolidLight or GlassTheme.SolidDark;
 
-    internal static bool IsDark(GlassTheme theme) => theme is GlassTheme.Gray or GlassTheme.SolidDark;
+    internal static bool IsDark(GlassTheme theme) => theme is GlassTheme.Gray or GlassTheme.SolidDark or GlassTheme.FrostedDark;
 
     internal static Windows.UI.Color SurfaceColor(GlassTheme theme) => theme switch
     {
         GlassTheme.SolidLight => ColorHelper.FromArgb(255, 241, 239, 233),
         GlassTheme.SolidDark => ColorHelper.FromArgb(255, 47, 45, 45),
+        GlassTheme.FrostedLight => ColorHelper.FromArgb(255, 245, 245, 243),
+        GlassTheme.FrostedDark => ColorHelper.FromArgb(255, 32, 33, 36),
         GlassTheme.Gray => ColorHelper.FromArgb(255, 47, 45, 45),
         _ => ColorHelper.FromArgb(255, 226, 229, 233)
     };
@@ -24,10 +26,17 @@ internal static class GlassThemePalette
     internal static Windows.UI.Color ForegroundColor(GlassTheme theme) =>
         IsDark(theme) ? ColorHelper.FromArgb(255, 245, 245, 245) : ColorHelper.FromArgb(255, 31, 31, 31);
 
-    internal static (Windows.UI.Color Tint, Windows.UI.Color Luminosity, float TintOpacity, float LuminosityOpacity) Acrylic(GlassTheme theme) =>
-        theme == GlassTheme.Gray
-            ? (ColorHelper.FromArgb(255, 32, 33, 36), ColorHelper.FromArgb(255, 47, 45, 45), .44f, .18f)
-            : (ColorHelper.FromArgb(255, 245, 246, 248), ColorHelper.FromArgb(255, 226, 229, 233), .18f, .42f);
+    internal static (Windows.UI.Color Tint, Windows.UI.Color Luminosity, float TintOpacity, float LuminosityOpacity) Acrylic(GlassTheme theme) => theme switch
+    {
+        GlassTheme.Gray =>
+            (ColorHelper.FromArgb(255, 32, 33, 36), ColorHelper.FromArgb(255, 47, 45, 45), .44f, .18f),
+        GlassTheme.FrostedLight =>
+            (ColorHelper.FromArgb(255, 245, 246, 248), ColorHelper.FromArgb(255, 226, 229, 233), .72f, .66f),
+        GlassTheme.FrostedDark =>
+            (ColorHelper.FromArgb(255, 32, 33, 36), ColorHelper.FromArgb(255, 47, 45, 45), .72f, .22f),
+        _ =>
+            (ColorHelper.FromArgb(255, 245, 246, 248), ColorHelper.FromArgb(255, 226, 229, 233), .18f, .42f)
+    };
 }
 
 internal sealed class NeutralAcrylicBackdrop : XamlSystemBackdrop
@@ -106,7 +115,7 @@ internal sealed class NeutralAcrylicBackdrop : XamlSystemBackdrop
 
         var palette = GlassThemePalette.Acrylic(_theme);
         _controller.TintColor = palette.Tint;
-        _controller.FallbackColor = palette.Luminosity;
+        _controller.FallbackColor = GlassThemePalette.SurfaceColor(_theme);
         _controller.TintOpacity = palette.TintOpacity;
         _controller.LuminosityOpacity = palette.LuminosityOpacity;
     }

@@ -36,26 +36,28 @@ TuckPane is a desktop file organizer for Windows 11 x64. It keeps real files and
 
 ### Quick actions
 
-Drag files and folders directly into a pane, use the right-click menu to manage it, hold `Ctrl` and scroll to resize its contents, optionally collapse it by clicking outside, and keep TuckPane running quietly from the system tray.
+Drag files and folders directly into a pane, reveal a Station from a monitor edge, create notes beside real files, hold `Ctrl` and scroll to resize contents, and keep TuckPane running quietly from the system tray.
 
 ## Features
 
-- Create up to 12 independent organizer panes and switch each pane between floating and desktop-positioned modes.
-- Drag in files, folders, application shortcuts, and Steam `.url` shortcuts. Their original icons are preserved whenever Windows exposes one.
+- Create up to 12 ordinary organizer panes in floating or desktop-positioned mode, plus edge-docked Station panes that reveal from a monitor's physical edge without taking keyboard focus.
+- Create rich notes with pasted images, seven color themes, optional ruled lines, inline renaming, and saved window placement. Export or open portable `.tucknote` files without converting them into ordinary organizer state.
+- Drag files, folders, application shortcuts, Steam `.url` shortcuts, and portable notes between panes or standard Windows targets with negotiated Copy, Move, or Link behavior.
 - Resize the expanded canvas proportionally from every edge or corner. Canvas size and item layout are saved automatically.
 - Hold `Ctrl` and use the mouse wheel over an expanded pane to adjust icon, label, and spacing scale.
-- Optionally collapse an expanded pane when you click anywhere outside it. The click still reaches the desktop or target application.
-- Open settings, duplicate an empty pane, switch mode, rename, open its storage directory, or delete it from the context menu.
+- Optionally expand ordinary panes after hovering, collapse them after the pointer leaves, and choose whether only one pane may stay expanded.
+- Paste files, create folders, cut items through the Windows clipboard, and move deleted real files to the Recycle Bin.
+- Open settings, duplicate an empty pane, switch mode, rename, open its storage directory, or safely delete it from the context menu.
 - Choose Light, Gray, Solid Light, or Solid Dark themes, with English, Simplified Chinese, and Japanese interfaces.
 - Run silently from the system tray. Closing the settings window hides it; only **Exit** in the tray menu terminates TuckPane.
 
 ## Download
 
-Current version: **1.0.11**. See the [Latest Release](https://github.com/ch998244353/TuckPane/releases/latest) for the complete release notes.
+Current version: **2.0.0**. See the [Latest Release](https://github.com/ch998244353/TuckPane/releases/latest) for the complete release notes.
 
-- [TuckPane-1.0.11-win-x64-setup.exe](https://github.com/ch998244353/TuckPane/releases/download/v1.0.11/TuckPane-1.0.11-win-x64-setup.exe): per-user offline installer with Start menu and desktop shortcuts.
-- [TuckPane-1.0.11-win-x64-portable.zip](https://github.com/ch998244353/TuckPane/releases/download/v1.0.11/TuckPane-1.0.11-win-x64-portable.zip): extract it and run `00-启动 TuckPane.exe`.
-- [SHA256SUMS.txt](https://github.com/ch998244353/TuckPane/releases/download/v1.0.11/SHA256SUMS.txt): SHA-256 checksums for both downloads.
+- [TuckPane-2.0.0-win-x64-setup.exe](https://github.com/ch998244353/TuckPane/releases/download/v2.0.0/TuckPane-2.0.0-win-x64-setup.exe): per-user offline installer with Start menu and desktop shortcuts.
+- [TuckPane-2.0.0-win-x64-portable.zip](https://github.com/ch998244353/TuckPane/releases/download/v2.0.0/TuckPane-2.0.0-win-x64-portable.zip): extract it and run `00-启动 TuckPane.exe`.
+- [SHA256SUMS.txt](https://github.com/ch998244353/TuckPane/releases/download/v2.0.0/SHA256SUMS.txt): SHA-256 checksums for both downloads.
 
 Both packages include .NET and the Windows App SDK. No separate runtime is required. The installer is currently unsigned, so Windows SmartScreen may show an “Unknown publisher” warning; verify the download with `SHA256SUMS.txt` when needed.
 

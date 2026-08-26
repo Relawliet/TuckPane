@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root {
+      --surface: #34414A;
+      --editor: #43515B;
+      --accent: #9BB6C5;
+      --border: #5F707A;
+      --text: #F1F4F5;
+      --muted: #BAC3C8;
+      --rule: #5F707A;
+      --font-size: 14px;
+      --ruled-line-height: 1.8em;
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--editor); }
+    body { color: var(--text); font-family: "Segoe UI Variable Text", "Microsoft YaHei UI", sans-serif; }
+    #editor {
+      width: 100%; height: 100%; padding: 14px 16px 28px; overflow: auto; overflow-x: hidden;
+      outline: none; white-space: pre-wrap; overflow-wrap: anywhere; caret-color: var(--accent);
+      color: var(--text); background: var(--editor); font-size: var(--font-size); line-height: var(--ruled-line-height);
+    }
+    #editor[data-ruled-lines] {
+      background-image: linear-gradient(to bottom, transparent calc(100% - 1px), var(--rule) 0);
+      background-position: 0 calc(14px - 0.3em);
+      background-size: 100% var(--ruled-line-height);
+      background-attachment: local;
+    }
+    #editor:empty::before { content: attr(data-placeholder); color: var(--muted); pointer-events: none; }
+    #editor img { display: inline-block; max-width: 100%; height: auto; margin: 6px 2px; vertical-align: top; }
+    #editor img[data-selected="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .handle {
+      position: fixed; width: 14px; height: 14px; border: 2px solid var(--editor);
+      border-radius: 50%; background: var(--accent); z-index: 10; touch-action: none;
+    }
+    .handle[hidden] { display: none; }
+    #nw, #se { cursor: nwse-resize; }
+    #ne, #sw { cursor: nesw-resize; }
+  </style>
+</head>
+<body>
+  <main id="editor" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true"></main>
+  <div id="nw" class="handle" data-x="-1" hidden role="slider" aria-label="Resize image"></div>
+  <div id="ne" class="handle" data-x="1" hidden role="slider" aria-label="Resize image"></div>
+  <div id="sw" class="handle" data-x="-1" hidden role="slider" aria-label="Resize image"></div>
+  <div id="se" class="handle" data-x="1" hidden role="slider" aria-label="Resize image"></div>
+  <script>
+    (() => {
+      'use strict';
+      const editor = document.getElementById('editor');
+      const handles = [...document.querySelectorAll('.handle')];
+      let selectedImage = null;
+      let fontSize = 14;
+      let resize = null;
+      let notifyTimer = 0;
+      let pastedImageLabel = 'Pasted image';
+
+      const post = payload => window.chrome?.webview?.postMessage(payload);
+      const scheduleChanged = () => {
+        clearTimeout(notifyTimer);
+        notifyTimer = setTimeout(() => post({ type: 'changed', html: cleanHtml(editor.innerHTML), fontSize }), 350);
+      };
+
+      function cleanHtml(html) {
+        const template = document.createElement('template');
+        template.innerHTML = html || '';
+        const output = document.createElement('div');
+        const append = (source, target) => {
+          for (const node of source.childNodes) {
+            if (node.nodeType === Node.TEXT_NODE) {
+              target.append(document.createTextNode(node.textContent || ''));
+              continue;
+            }
+            if (node.nodeType !== Node.ELEMENT_NODE) continue;
+            const tag = node.tagName.toLowerCase();
+            if (tag === 'img') {
+              const src = node.getAttribute('src') || '';
+              if (!/^data:image\/(png|jpe?g|gif|webp);base64,[a-z0-9+/=\s]+$/i.test(src)) continue;
+              const image = document.createElement('img');
+              image.src = src;
+              image.alt = node.getAttribute('alt') || pastedImageLabel;
+              image.tabIndex = 0;
+              const width = Math.round(Number.parseFloat(node.style.width || node.getAttribute('width') || '0'));
+              if (Number.isFinite(width) && width > 0) image.style.width = `${Math.min(4096, width)}px`;
+              target.append(image);
+              continue;
+            }
+            if (tag === 'br') {
+              target.append(document.createElement('br'));
+              continue;
+            }
+            const container = tag === 'div' || tag === 'p' ? document.createElement('div') : target;
+            append(node, container);
+            if (container !== target) target.append(container);
+          }
+        };
+        append(template.content, output);
+        return output.innerHTML;
+      }
+
+      function insertNodeAtSelection(node) {
+        const selection = window.getSelection();
+        let range = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
+        if (!range || !editor.contains(range.commonAncestorContainer)) {
+          range = document.createRange();
+          range.selectNodeContents(editor);
+          range.collapse(false);
+        }
+        range.deleteContents();
+        range.insertNode(node);
+        range.setStartAfter(node);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+
+      function insertText(text) {
+        const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+        lines.forEach((line, index) => {
+          if (index) insertNodeAtSelection(document.createElement('br'));
+          if (line) insertNodeAtSelection(document.createTextNode(line));
+        });
+        scheduleChanged();
+      }
+
+      function setRuledLines(show) {
+        editor.toggleAttribute('data-ruled-lines', Boolean(show));
+      }
+
+      function insertImage(file) {
+        if (!/^image\/(png|jpe?g|gif|webp)$/i.test(file.type)) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const image = new Image();
+          image.alt = pastedImageLabel;
+          image.tabIndex = 0;
+          image.onload = () => {
+            const maximum = Math.max(96, editor.clientWidth - 40);
+            image.style.width = `${Math.max(48, Math.min(maximum, image.naturalWidth || maximum))}px`;
+            insertNodeAtSelection(image);
+            insertNodeAtSelection(document.createElement('br'));
+            selectImage(image);
+            scheduleChanged();
+          };
+          image.src = String(reader.result || '');
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function selectImage(image) {
+        if (selectedImage) selectedImage.removeAttribute('data-selected');
+        selectedImage = image;
+        if (selectedImage) selectedImage.setAttribute('data-selected', 'true');
+        positionHandles();
+      }
+
+      function positionHandles() {
+        if (!selectedImage || !selectedImage.isConnected) {
+          selectedImage = null;
+          handles.forEach(handle => handle.hidden = true);
+          return;
+        }
+        const rect = selectedImage.getBoundingClientRect();
+        const points = [[rect.left, rect.top], [rect.right, rect.top], [rect.left, rect.bottom], [rect.right, rect.bottom]];
+        handles.forEach((handle, index) => {
+          handle.hidden = false;
+          handle.style.left = `${points[index][0] - 7}px`;
+          handle.style.top = `${points[index][1] - 7}px`;
+          handle.setAttribute('aria-valuenow', String(Math.round(rect.width)));
+        });
+      }
+
+      editor.addEventListener('input', scheduleChanged);
+      editor.addEventListener('scroll', positionHandles, { passive: true });
+      window.addEventListener('resize', positionHandles);
+      editor.addEventListener('click', event => selectImage(event.target instanceof HTMLImageElement ? event.target : null));
+      editor.addEventListener('focusin', event => {
+        if (event.target instanceof HTMLImageElement) selectImage(event.target);
+      });
+      editor.addEventListener('paste', event => {
+        event.preventDefault();
+        const images = [...(event.clipboardData?.items || [])]
+          .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+          .map(item => item.getAsFile()).filter(Boolean);
+        if (images.length) images.forEach(insertImage);
+        else insertText(event.clipboardData?.getData('text/plain') || '');
+      });
+      editor.addEventListener('wheel', event => {
+        if (!event.ctrlKey) return;
+        event.preventDefault();
+        fontSize = Math.max(8, Math.min(48, fontSize + (event.deltaY < 0 ? 1 : -1)));
+        document.documentElement.style.setProperty('--font-size', `${fontSize}px`);
+        post({ type: 'fontSize', fontSize });
+        scheduleChanged();
+      }, { passive: false });
+      editor.addEventListener('keydown', event => {
+        if (!selectedImage) return;
+        if (event.key === 'Delete' || event.key === 'Backspace') {
+          event.preventDefault();
+          selectedImage.remove();
+          selectImage(null);
+          scheduleChanged();
+        } else if (event.altKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+          event.preventDefault();
+          const width = Math.max(48, Math.min(editor.clientWidth - 40,
+            selectedImage.getBoundingClientRect().width + (event.key === 'ArrowRight' ? 8 : -8)));
+          selectedImage.style.width = `${Math.round(width)}px`;
+          positionHandles();
+          scheduleChanged();
+        }
+      });
+
+      handles.forEach(handle => {
+        handle.addEventListener('pointerdown', event => {
+          if (!selectedImage) return;
+          event.preventDefault();
+          handle.setPointerCapture(event.pointerId);
+          const rect = selectedImage.getBoundingClientRect();
+          resize = { pointerId: event.pointerId, startX: event.clientX, width: rect.width, direction: Number(handle.dataset.x) || 1 };
+        });
+        handle.addEventListener('pointermove', event => {
+          if (!resize || resize.pointerId !== event.pointerId || !selectedImage) return;
+          const delta = (event.clientX - resize.startX) * resize.direction;
+          const width = Math.max(48, Math.min(editor.clientWidth - 40, resize.width + delta));
+          selectedImage.style.width = `${Math.round(width)}px`;
+          selectedImage.style.height = 'auto';
+          positionHandles();
+        });
+        const finish = event => {
+          if (!resize || resize.pointerId !== event.pointerId) return;
+          resize = null;
+          scheduleChanged();
+        };
+        handle.addEventListener('pointerup', finish);
+        handle.addEventListener('pointercancel', finish);
+      });
+
+      window.__tuckpane = {
+        load(html, size, palette, ruledLines, placeholder, languageTag, imageLabel, resizeLabel) {
+          document.documentElement.lang = languageTag || 'en-US';
+          pastedImageLabel = imageLabel || 'Pasted image';
+          handles.forEach(handle => handle.setAttribute('aria-label', resizeLabel || 'Resize image'));
+          editor.innerHTML = cleanHtml(html);
+          editor.querySelectorAll('img').forEach(image => image.alt = pastedImageLabel);
+          editor.dataset.placeholder = placeholder || '';
+          fontSize = Math.max(8, Math.min(48, Number(size) || 14));
+          document.documentElement.style.setProperty('--font-size', `${fontSize}px`);
+          for (const [key, value] of Object.entries(palette || {}))
+            document.documentElement.style.setProperty(`--${key}`, String(value));
+          setRuledLines(ruledLines);
+          editor.focus();
+          post({ type: 'ready' });
+        },
+        setTheme(palette) {
+          for (const [key, value] of Object.entries(palette || {}))
+            document.documentElement.style.setProperty(`--${key}`, String(value));
+        },
+        setRuledLines,
+        getState() { return { html: cleanHtml(editor.innerHTML), fontSize }; }
+      };
+      post({ type: 'shellReady' });
+    })();
+  </script>
+</body>
+</html>

@@ -7,11 +7,15 @@ internal sealed record DisplayInfo(string Device, NativeMethods.RECT Monitor, Na
 internal static class DisplayPlacementService
 {
     internal const double ExpandedSideInsetDip = 28;
+    internal const double StationSideInsetDip = 12;
+    internal const double StationTopInsetDip = 12;
+    internal const double StationBottomInsetDip = 12;
     internal const double ExpandedTopInsetDip = 40.5;
     internal const double ExpandedBottomInsetDip = 28;
     internal const double ItemGapDip = 12;
     internal const double MaximumItemScale = 1.65;
     private const double IconCellFraction = .68;
+    private const double StationIconCellFraction = .82;
     private const double NameCellFraction = .15;
     private const double PreviousIconCellFraction = .62;
 
@@ -33,6 +37,14 @@ internal static class DisplayPlacementService
             return true;
         }, IntPtr.Zero);
         return displays;
+    }
+
+    internal static DisplayInfo GetDisplay(string? device = null)
+    {
+        IReadOnlyList<DisplayInfo> displays = GetDisplays();
+        return displays.FirstOrDefault(display => string.Equals(display.Device, device, StringComparison.OrdinalIgnoreCase))
+            ?? displays.FirstOrDefault(display => display.Monitor.Left == 0 && display.Monitor.Top == 0)
+            ?? displays.First();
     }
 
     public static NativeMethods.RECT Restore(WidgetPosition? saved, int widthPx, int heightPx)
@@ -65,6 +77,29 @@ internal static class DisplayPlacementService
         return new NativeMethods.RECT { Left = x, Top = y, Right = x + width, Bottom = y + height };
     }
 
+    internal static NativeMethods.RECT CalculateCenteredDialogBounds(
+        DisplayInfo display,
+        double widthDip = 440,
+        double heightDip = 280,
+        double marginDip = 24)
+    {
+        double scale = Math.Max(1, display.Scale);
+        int margin = Math.Max(0, (int)Math.Round(marginDip * scale));
+        int maximumWidth = Math.Max(1, display.Work.Width - margin * 2);
+        int maximumHeight = Math.Max(1, display.Work.Height - margin * 2);
+        int width = Math.Min(maximumWidth, Math.Max(1, (int)Math.Round(widthDip * scale)));
+        int height = Math.Min(maximumHeight, Math.Max(1, (int)Math.Round(heightDip * scale)));
+        int left = display.Work.Left + (display.Work.Width - width) / 2;
+        int top = display.Work.Top + (display.Work.Height - height) / 2;
+        return new NativeMethods.RECT
+        {
+            Left = left,
+            Top = top,
+            Right = left + width,
+            Bottom = top + height
+        };
+    }
+
     internal static NativeMethods.RECT CalculateDraggedBounds(
         NativeMethods.RECT pressAnchor,
         NativeMethods.POINT pressCursor,
@@ -89,20 +124,52 @@ internal static class DisplayPlacementService
         return Math.Max(1, exactExtent - .5);
     }
 
+    internal static (double Width, double Height) CalculateItemCellSizeDip(
+        double availableWidth,
+        double availableHeight,
+        OrganizerLayout layout)
+    {
+        double width = CalculateGridCellExtent(availableWidth, layout.Columns, ItemGapDip);
+        double height = CalculateGridCellExtent(availableHeight, layout.Rows, ItemGapDip);
+        return (width, height);
+    }
+
     internal static double CalculateMaximumItemScale(DisplayInfo display, OrganizerLayout layout, double canvasScale)
     {
         double cellDip = CalculateCanvasCell(display, layout, canvasScale) / display.Scale;
         return CalculateMaximumItemScaleForCell(cellDip);
     }
 
+    internal static double CalculateMaximumStationItemScale(DisplayInfo display, OrganizerLayout layout)
+    {
+        int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumStationColumns);
+        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumStationRows);
+        double workWidthDip = display.Work.Width / display.Scale;
+        double workHeightDip = display.Work.Height / display.Scale;
+        double availableCellWidth = (workWidthDip - StationSideInsetDip * 2 - ItemGapDip * (columns - 1)) / columns;
+        double availableCellHeight = (workHeightDip - StationTopInsetDip - StationBottomInsetDip - ItemGapDip * (rows - 1)) / rows;
+        if (availableCellWidth <= 1 || availableCellHeight <= 1) return .5;
+        double low = .5;
+        double high = MaximumItemScale;
+        for (int iteration = 0; iteration < 24; iteration++)
+        {
+            double candidate = (low + high) / 2;
+            (double width, double height) = CalculateRequiredStationCellSizeDip(candidate);
+            if (width <= availableCellWidth && height <= availableCellHeight) low = candidate;
+            else high = candidate;
+        }
+        return Math.Clamp(low, .5, MaximumItemScale);
+    }
+
     internal static double CalculateMaximumItemScaleForExpandedSize(
         OrganizerLayout layout,
         double widthDip,
-        double heightDip)
+        double heightDip,
+        double sideInsetDip = ExpandedSideInsetDip)
     {
-        int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumLayoutDimension);
-        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumLayoutDimension);
-        double availableWidth = Math.Max(1, widthDip - ExpandedSideInsetDip * 2);
+        int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumStationColumns);
+        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumStationRows);
+        double availableWidth = Math.Max(1, widthDip - sideInsetDip * 2);
         double availableHeight = Math.Max(1, heightDip - ExpandedTopInsetDip - ExpandedBottomInsetDip);
         double cellDip = Math.Min(
             CalculateGridCellExtent(availableWidth, columns, ItemGapDip),
@@ -112,13 +179,14 @@ internal static class DisplayPlacementService
 
     internal static (double WidthDip, double HeightDip) CalculateMinimumExpandedSizeDip(
         OrganizerLayout layout,
-        double itemScale)
+        double itemScale,
+        double sideInsetDip = ExpandedSideInsetDip)
     {
-        int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumLayoutDimension);
-        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumLayoutDimension);
+        int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumStationColumns);
+        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumStationRows);
         double cell = CalculateRequiredCellDip(itemScale);
         return (
-            cell * columns + ItemGapDip * (columns - 1) + ExpandedSideInsetDip * 2,
+            cell * columns + ItemGapDip * (columns - 1) + sideInsetDip * 2,
             cell * rows + ItemGapDip * (rows - 1) + ExpandedTopInsetDip + ExpandedBottomInsetDip);
     }
 
@@ -136,18 +204,24 @@ internal static class DisplayPlacementService
         return Math.Clamp(low, .5, MaximumItemScale);
     }
 
-    internal static double CalculateMinimumCanvasScale(DisplayInfo display, OrganizerLayout layout)
+    internal static double CalculateMinimumCanvasScale(
+        DisplayInfo display,
+        OrganizerLayout layout,
+        double sideInsetDip = ExpandedSideInsetDip)
     {
         double baseCell = CalculateBaseCell(display);
         double scale = display.Scale;
-        int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumLayoutDimension);
-        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumLayoutDimension);
+        if (Math.Abs(sideInsetDip - StationSideInsetDip) < .001)
+            return Math.Clamp(CalculateRequiredCellDip(.5) * scale / baseCell, .1, 1.2);
+
+        int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumStationColumns);
+        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumStationRows);
         double gap = ItemGapDip * scale;
-        double horizontalChrome = ExpandedSideInsetDip * 2 * scale + gap * (columns - 1);
+        double horizontalChrome = sideInsetDip * 2 * scale + gap * (columns - 1);
         double verticalChrome = (ExpandedTopInsetDip + ExpandedBottomInsetDip) * scale + gap * (rows - 1);
         double previousRequiredCellDip = Math.Max(88, Math.Max(72 / PreviousIconCellFraction, 13 / NameCellFraction));
         double legacyCell = Math.Min(
-            CalculateMaximumCell(display, layout),
+            CalculateMaximumCell(display, layout, sideInsetDip),
             Math.Max(baseCell * .4, previousRequiredCellDip * scale));
         double legacyLongest = Math.Max(
             legacyCell * columns + horizontalChrome,
@@ -170,6 +244,17 @@ internal static class DisplayPlacementService
             verticalContent);
     }
 
+    internal static (double Width, double Height) CalculateRequiredStationCellSizeDip(double itemScale)
+    {
+        double normalized = Math.Clamp(itemScale, .5, MaximumItemScale);
+        double fontSize = Math.Max(8, 13 * normalized);
+        double iconSize = 72 * normalized;
+        double padding = Math.Max(4, 10 * normalized);
+        return (
+            Math.Max(iconSize / StationIconCellFraction, fontSize / NameCellFraction),
+            iconSize + fontSize * 1.25 + Math.Max(2, 6 * normalized) + padding);
+    }
+
     internal static NativeMethods.RECT CalculateExpandedBounds(NativeMethods.RECT compact, DisplayInfo display)
         => CalculateExpandedBounds(compact, display, new OrganizerLayout(), canvasScale: 1);
 
@@ -179,11 +264,12 @@ internal static class DisplayPlacementService
         OrganizerLayout layout,
         double canvasScale,
         double? manualCanvasBaseWidthDip = null,
-        double? manualCanvasBaseHeightDip = null)
+        double? manualCanvasBaseHeightDip = null,
+        double sideInsetDip = ExpandedSideInsetDip)
     {
         NativeMethods.RECT insetWork = GetExpandedWorkArea(display);
-        int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumLayoutDimension);
-        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumLayoutDimension);
+        int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumStationColumns);
+        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumStationRows);
         double width;
         double height;
         if (manualCanvasBaseWidthDip is double baseWidth && manualCanvasBaseHeightDip is double baseHeight &&
@@ -197,9 +283,9 @@ internal static class DisplayPlacementService
         }
         else
         {
-            double cell = CalculateCanvasCell(display, layout, canvasScale);
+            double cell = CalculateCanvasCell(display, layout, canvasScale, sideInsetDip);
             double gap = ItemGapDip * display.Scale;
-            width = cell * columns + gap * (columns - 1) + ExpandedSideInsetDip * 2 * display.Scale;
+            width = cell * columns + gap * (columns - 1) + sideInsetDip * 2 * display.Scale;
             height = cell * rows + gap * (rows - 1) + (ExpandedTopInsetDip + ExpandedBottomInsetDip) * display.Scale;
         }
         int widthPx = Math.Max(1, (int)Math.Round(width));
@@ -228,6 +314,146 @@ internal static class DisplayPlacementService
         };
     }
 
+    internal static NativeMethods.RECT CalculateStationAnchor(
+        DisplayInfo display,
+        OrganizerDockEdge edge,
+        WidgetPosition? saved = null)
+    {
+        double xRatio = saved is null || saved.SavedWorkAreaWidthDip <= 0
+            ? .5
+            : saved.XDip / saved.SavedWorkAreaWidthDip;
+        double yRatio = saved is null || saved.SavedWorkAreaHeightDip <= 0
+            ? .5
+            : saved.YDip / saved.SavedWorkAreaHeightDip;
+        int centerX = Math.Clamp(
+            display.Work.Left + (int)Math.Round(Math.Clamp(xRatio, 0, 1) * display.Work.Width),
+            display.Work.Left,
+            display.Work.Right - 1);
+        int centerY = Math.Clamp(
+            display.Work.Top + (int)Math.Round(Math.Clamp(yRatio, 0, 1) * display.Work.Height),
+            display.Work.Top,
+            display.Work.Bottom - 1);
+        return edge switch
+        {
+            OrganizerDockEdge.Left => new() { Left = display.Work.Left, Top = centerY, Right = display.Work.Left + 1, Bottom = centerY + 1 },
+            OrganizerDockEdge.Top => new() { Left = centerX, Top = display.Work.Top, Right = centerX + 1, Bottom = display.Work.Top + 1 },
+            OrganizerDockEdge.Right => new() { Left = display.Work.Right - 1, Top = centerY, Right = display.Work.Right, Bottom = centerY + 1 },
+            _ => new() { Left = centerX, Top = display.Work.Bottom - 1, Right = centerX + 1, Bottom = display.Work.Bottom }
+        };
+    }
+
+    internal static NativeMethods.RECT CalculateStationBounds(
+        DisplayInfo display,
+        OrganizerDockEdge edge,
+        OrganizerLayout layout,
+        double canvasScale,
+        double itemScale,
+        WidgetPosition? position = null,
+        double? manualCanvasBaseWidthDip = null,
+        double? manualCanvasBaseHeightDip = null)
+    {
+        _ = canvasScale;
+        _ = manualCanvasBaseWidthDip;
+        _ = manualCanvasBaseHeightDip;
+        int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumStationColumns);
+        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumStationRows);
+        double effectiveItemScale = Math.Min(
+            Math.Clamp(itemScale, .5, MaximumItemScale),
+            CalculateMaximumStationItemScale(display, layout));
+        (double cellWidthDip, double cellHeightDip) = CalculateRequiredStationCellSizeDip(effectiveItemScale);
+        int width = Math.Min(display.Work.Width, Math.Max(1, (int)Math.Round((
+            cellWidthDip * columns + ItemGapDip * (columns - 1) + StationSideInsetDip * 2) * display.Scale)));
+        int height = Math.Min(display.Work.Height, Math.Max(1, (int)Math.Round((
+            cellHeightDip * rows + ItemGapDip * (rows - 1) + StationTopInsetDip + StationBottomInsetDip) * display.Scale)));
+        NativeMethods.RECT anchor = CalculateStationAnchor(display, edge, position);
+        int left = anchor.Left - width / 2;
+        int top = anchor.Top - height / 2;
+        switch (edge)
+        {
+            case OrganizerDockEdge.Left: left = display.Work.Left; break;
+            case OrganizerDockEdge.Top: top = display.Work.Top; break;
+            case OrganizerDockEdge.Right: left = display.Work.Right - width; break;
+            case OrganizerDockEdge.Bottom: top = display.Work.Bottom - height; break;
+        }
+        return Clamp(new NativeMethods.RECT
+        {
+            Left = left,
+            Top = top,
+            Right = left + width,
+            Bottom = top + height
+        }, display.Work);
+    }
+
+    internal static bool IsStationHotZone(
+        NativeMethods.POINT point,
+        DisplayInfo display,
+        OrganizerDockEdge edge,
+        int thicknessPx = 4)
+    {
+        NativeMethods.RECT bounds = display.Monitor;
+        if (point.X < bounds.Left || point.X >= bounds.Right ||
+            point.Y < bounds.Top || point.Y >= bounds.Bottom)
+        {
+            return false;
+        }
+        int thickness = Math.Max(1, thicknessPx);
+        return edge switch
+        {
+            OrganizerDockEdge.Left => point.X < bounds.Left + thickness,
+            OrganizerDockEdge.Top => point.Y < bounds.Top + thickness,
+            OrganizerDockEdge.Right => point.X >= bounds.Right - thickness,
+            _ => point.Y >= bounds.Bottom - thickness
+        };
+    }
+
+    internal static NativeMethods.RECT CalculateStationDraggedBounds(
+        NativeMethods.RECT pressBounds,
+        NativeMethods.POINT pressCursor,
+        NativeMethods.POINT currentCursor,
+        DisplayInfo display,
+        OrganizerDockEdge edge)
+    {
+        int width = Math.Min(pressBounds.Width, display.Work.Width);
+        int height = Math.Min(pressBounds.Height, display.Work.Height);
+        int left = pressBounds.Left;
+        int top = pressBounds.Top;
+        if (edge is OrganizerDockEdge.Left or OrganizerDockEdge.Right)
+        {
+            top = Math.Clamp(pressBounds.Top + currentCursor.Y - pressCursor.Y, display.Work.Top, display.Work.Bottom - height);
+            left = edge == OrganizerDockEdge.Left ? display.Work.Left : display.Work.Right - width;
+        }
+        else
+        {
+            left = Math.Clamp(pressBounds.Left + currentCursor.X - pressCursor.X, display.Work.Left, display.Work.Right - width);
+            top = edge == OrganizerDockEdge.Top ? display.Work.Top : display.Work.Bottom - height;
+        }
+        return new NativeMethods.RECT { Left = left, Top = top, Right = left + width, Bottom = top + height };
+    }
+
+    internal static WidgetPosition CaptureStationPosition(
+        DisplayInfo display,
+        OrganizerDockEdge edge,
+        NativeMethods.RECT stationBounds)
+    {
+        int centerX = stationBounds.Left + stationBounds.Width / 2;
+        int centerY = stationBounds.Top + stationBounds.Height / 2;
+        NativeMethods.RECT anchor = edge switch
+        {
+            OrganizerDockEdge.Left => new() { Left = display.Work.Left, Top = centerY, Right = display.Work.Left + 1, Bottom = centerY + 1 },
+            OrganizerDockEdge.Top => new() { Left = centerX, Top = display.Work.Top, Right = centerX + 1, Bottom = display.Work.Top + 1 },
+            OrganizerDockEdge.Right => new() { Left = display.Work.Right - 1, Top = centerY, Right = display.Work.Right, Bottom = centerY + 1 },
+            _ => new() { Left = centerX, Top = display.Work.Bottom - 1, Right = centerX + 1, Bottom = display.Work.Bottom }
+        };
+        return new WidgetPosition
+        {
+            MonitorDevice = display.Device,
+            XDip = (anchor.Left - display.Work.Left) / display.Scale,
+            YDip = (anchor.Top - display.Work.Top) / display.Scale,
+            SavedWorkAreaWidthDip = display.Work.Width / display.Scale,
+            SavedWorkAreaHeightDip = display.Work.Height / display.Scale
+        };
+    }
+
     private static double CalculateBaseCell(DisplayInfo display)
     {
         int margin = (int)Math.Round(24 * display.Scale);
@@ -235,27 +461,42 @@ internal static class DisplayPlacementService
         return legacyWidth / 6d;
     }
 
-    private static double CalculateCanvasCell(DisplayInfo display, OrganizerLayout layout, double canvasScale)
+    private static double CalculateCanvasCell(
+        DisplayInfo display,
+        OrganizerLayout layout,
+        double canvasScale,
+        double sideInsetDip = ExpandedSideInsetDip)
     {
-        double minimumScale = CalculateMinimumCanvasScale(display, layout);
+        double minimumScale = CalculateMinimumCanvasScale(display, layout, sideInsetDip);
         double desiredCell = CalculateBaseCell(display) * Math.Clamp(canvasScale, minimumScale, 1.2);
-        return Math.Min(CalculateMaximumCell(display, layout), desiredCell);
+        return Math.Min(CalculateMaximumCell(display, layout, sideInsetDip), desiredCell);
     }
 
-    private static double CalculateMaximumCell(DisplayInfo display, OrganizerLayout layout)
+    private static double CalculateMaximumCell(
+        DisplayInfo display,
+        OrganizerLayout layout,
+        double sideInsetDip = ExpandedSideInsetDip)
     {
         int margin = (int)Math.Round(24 * display.Scale);
         int columns = Math.Clamp(layout.Columns, 1, OrganizerLimits.MaximumLayoutDimension);
-        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumLayoutDimension);
+        int rows = Math.Clamp(layout.Rows, 1, OrganizerLimits.MaximumStationRows);
         double gap = ItemGapDip * display.Scale;
-        double availableWidth = display.Work.Width - margin * 2 - ExpandedSideInsetDip * 2 * display.Scale - gap * (columns - 1);
+        double availableWidth = display.Work.Width - margin * 2 - sideInsetDip * 2 * display.Scale - gap * (columns - 1);
         double availableHeight = display.Work.Height - margin * 2 - (ExpandedTopInsetDip + ExpandedBottomInsetDip) * display.Scale - gap * (rows - 1);
         return Math.Max(1, Math.Min(availableWidth / columns, availableHeight / rows));
     }
 
     public static NativeMethods.RECT FindAvailableOnPrimary(IReadOnlyList<NativeMethods.RECT> occupied, int widthPx, int heightPx)
     {
-        DisplayInfo display = GetDisplays().FirstOrDefault(d => d.Monitor.Left == 0 && d.Monitor.Top == 0) ?? GetDisplays().First();
+        return FindAvailable(GetDisplay(), occupied, widthPx, heightPx);
+    }
+
+    internal static NativeMethods.RECT FindAvailable(
+        DisplayInfo display,
+        IReadOnlyList<NativeMethods.RECT> occupied,
+        int widthPx,
+        int heightPx)
+    {
         int gap = (int)Math.Round(16 * display.Scale);
         for (int y = display.Work.Top + gap; y + heightPx <= display.Work.Bottom; y += heightPx + gap)
         {

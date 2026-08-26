@@ -2,6 +2,8 @@ namespace TuckPane.Models;
 
 internal static class OrganizerLimits
 {
+    internal const int MaximumOrganizers = 12;
+    internal const int MaximumStations = 4;
     internal const double MinimumCompactScale = 1.2;
     internal const double DefaultCompactScale = 1.56;
     internal const double MaximumCompactScale = 3;
@@ -9,7 +11,11 @@ internal static class OrganizerLimits
     internal const double CompactWindowWidthDip = 76;
     internal const double CompactWindowHeightDip = 68;
     internal const int MinimumGridDimension = 2;
+    internal const int MinimumStationRows = 1;
+    internal const int MinimumStationColumns = 1;
     internal const int MaximumLayoutDimension = 6;
+    internal const int MaximumStationRows = 9;
+    internal const int MaximumStationColumns = 9;
 
     internal static double CalculateCompactPreviewIconFraction(double itemScale)
     {

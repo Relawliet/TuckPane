@@ -39,5 +39,5 @@ jobs:
             ".\artifacts\release\TuckPane-$version-win-x64-portable.zip" `
             ".\artifacts\release\SHA256SUMS.txt" `
             --verify-tag `
-            --title "TuckPane $env:GITHUB_REF_NAME" `
+            --title "TuckPane $version" `
             --notes-file .\RELEASE_NOTES.md

@@ -8,12 +8,15 @@ public static class AppPaths
     private const string LegacyProductDirectoryName = "GlassFolder";
     private static readonly string? TestRoot = Environment.GetEnvironmentVariable("TUCKPANE_TEST_ROOT");
     private static readonly (string UserRoot, string LocalRoot) SelectedRoots = SelectRoots();
+    private static int _noteStagingCleanupStarted;
 
     public static string UserRoot { get; } = SelectedRoots.UserRoot;
     public static string ItemsRoot { get; } = Path.Combine(UserRoot, "Items");
     public static string WindowsRoot { get; } = Path.Combine(UserRoot, "Windows");
     public static string LocalRoot { get; } = SelectedRoots.LocalRoot;
     public static string IconCacheRoot { get; } = Path.Combine(LocalRoot, "icon-cache");
+    public static string NotesRoot { get; } = Path.Combine(LocalRoot, "notes");
+    public static string NoteStagingRoot { get; } = Path.Combine(LocalRoot, "note-staging");
     public static string StatePath { get; } = Path.Combine(LocalRoot, "state.json");
     public static string BackupStatePath { get; } = Path.Combine(LocalRoot, "state.json.bak");
     public static string LogPath { get; } = Path.Combine(LocalRoot, "TuckPane.log");
@@ -32,6 +35,55 @@ public static class AppPaths
         Directory.CreateDirectory(WindowsRoot);
         Directory.CreateDirectory(LocalRoot);
         Directory.CreateDirectory(IconCacheRoot);
+        Directory.CreateDirectory(NotesRoot);
+        Directory.CreateDirectory(NoteStagingRoot);
+        if (Interlocked.Exchange(ref _noteStagingCleanupStarted, 1) == 0) CleanupNoteStaging();
+    }
+
+    internal static void CleanupNoteStaging()
+    {
+        string root = Path.GetFullPath(NoteStagingRoot)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        try
+        {
+            Directory.CreateDirectory(root);
+            if ((File.GetAttributes(root) & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidOperationException("The note staging root cannot be a reparse point.");
+            foreach (string candidate in Directory.EnumerateDirectories(root, "*", SearchOption.TopDirectoryOnly))
+            {
+                string fullPath = Path.GetFullPath(candidate)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                if (!string.Equals(Path.GetDirectoryName(fullPath), root, StringComparison.OrdinalIgnoreCase) ||
+                    !Guid.TryParseExact(Path.GetFileName(fullPath), "N", out _)) continue;
+                try
+                {
+                    bool reparsePoint = (File.GetAttributes(fullPath) & FileAttributes.ReparsePoint) != 0;
+                    Directory.Delete(fullPath, recursive: !reparsePoint);
+                }
+                catch (Exception ex)
+                {
+                    LogNoteStagingCleanupFailure($"无法清理旧便签暂存目录：{fullPath}", ex);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            LogNoteStagingCleanupFailure($"无法枚举便签暂存目录：{root}", ex);
+        }
+    }
+
+    private static void LogNoteStagingCleanupFailure(string message, Exception exception)
+    {
+        try
+        {
+            Directory.CreateDirectory(LocalRoot);
+            File.AppendAllText(LogPath,
+                $"{DateTimeOffset.Now:O} [ERROR] {message}{Environment.NewLine}{exception}{Environment.NewLine}");
+        }
+        catch
+        {
+            // Staging cleanup and its diagnostics must never prevent startup.
+        }
     }
 
     public static string ResolveStoragePath(string relativePath)

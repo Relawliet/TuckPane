@@ -52,6 +52,51 @@ public sealed class StorageService
         return outcomes;
     }
 
+    public async Task<IReadOnlyList<TransferOutcome>> CopyBatchAsync(
+        IReadOnlyList<string> sourcePaths,
+        IProgress<TransferProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(_itemsRoot);
+        DropValidationResult validation = DropValidator.ValidateBatch(sourcePaths, _itemsRoot);
+        if (!validation.IsValid) throw new InvalidOperationException(string.Join(Environment.NewLine, validation.Errors));
+
+        var outcomes = new List<TransferOutcome>();
+        foreach (string sourcePath in sourcePaths)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            TransferOutcome outcome = DropValidator.IsExecutable(sourcePath)
+                ? CreateExecutableShortcut(sourcePath)
+                : await CopyOneAsync(sourcePath, progress, cancellationToken);
+            outcomes.Add(outcome);
+            if (outcome.Status is TransferStatus.Failed or TransferStatus.Cancelled) break;
+        }
+        return outcomes;
+    }
+
+    internal string CreateUniqueFolder(string requestedName)
+    {
+        string name = ValidateNewFolderName(requestedName);
+        Directory.CreateDirectory(_itemsRoot);
+        string destination = GetUniquePath(Path.Combine(_itemsRoot, name), isDirectory: true);
+        Directory.CreateDirectory(destination);
+        return destination;
+    }
+
+    internal static string ValidateNewFolderName(string requestedName)
+    {
+        string name = requestedName.Trim();
+        if (name.Length == 0) throw new InvalidOperationException(AppStrings.Get("FolderNameEmptyError"));
+        if (name.Length > 120 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || name.EndsWith('.') || name.EndsWith(' '))
+            throw new InvalidOperationException(AppStrings.Get("FolderNameInvalidError"));
+        string deviceName = name.Split('.')[0].ToUpperInvariant();
+        if (deviceName is "CON" or "PRN" or "AUX" or "NUL" or
+            "COM1" or "COM2" or "COM3" or "COM4" or "COM5" or "COM6" or "COM7" or "COM8" or "COM9" or
+            "LPT1" or "LPT2" or "LPT3" or "LPT4" or "LPT5" or "LPT6" or "LPT7" or "LPT8" or "LPT9")
+            throw new InvalidOperationException(AppStrings.Get("FolderNameReservedError"));
+        return name;
+    }
+
     public IReadOnlyList<WidgetItem> ReadItems()
     {
         if (!Directory.Exists(_itemsRoot)) return [];
@@ -218,6 +263,52 @@ public sealed class StorageService
         return await MovePathAsync(source, destination, progress, cancellationToken, rollbackDestinationOnSourceDeleteFailure: false);
     }
 
+    private async Task<TransferOutcome> CopyOneAsync(
+        string sourcePath,
+        IProgress<TransferProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        string source = Path.GetFullPath(sourcePath).TrimEnd(Path.DirectorySeparatorChar);
+        bool isDirectory = Directory.Exists(source);
+        string destination = GetUniquePath(Path.Combine(_itemsRoot, Path.GetFileName(source)), isDirectory);
+        string staging = Path.Combine(_itemsRoot, $".glassfolder-staging-{Guid.NewGuid():N}");
+        string itemName = Path.GetFileName(source);
+        try
+        {
+            long totalBytes = isDirectory ? BuildManifest(source).TotalBytes : new FileInfo(source).Length;
+            long copiedBytes = 0;
+            Action<int> report = bytes =>
+            {
+                copiedBytes += bytes;
+                progress?.Report(new TransferProgress(itemName, copiedBytes, totalBytes));
+            };
+            if (isDirectory)
+            {
+                await CopyDirectoryAsync(source, staging, report, cancellationToken);
+                VerifyEquivalent(source, staging);
+                Directory.Move(staging, destination);
+            }
+            else
+            {
+                await CopyFileAsync(source, staging, report, cancellationToken);
+                if (new FileInfo(source).Length != new FileInfo(staging).Length) throw new IOException(AppStrings.Get("CopySizeMismatch"));
+                File.Move(staging, destination);
+            }
+            return new(source, destination, TransferStatus.Copied, AppStrings.Get("Copied"));
+        }
+        catch (OperationCanceledException)
+        {
+            TryDelete(staging);
+            return new(source, null, TransferStatus.Cancelled, AppStrings.Get("CopyCancelled"));
+        }
+        catch (Exception ex)
+        {
+            TryDelete(staging);
+            AppLogger.Error($"复制导入失败：{source}", ex);
+            return new(source, null, TransferStatus.Failed, ex.Message);
+        }
+    }
+
     private static async Task<TransferOutcome> MovePathAsync(
         string source,
         string destination,
@@ -317,7 +408,8 @@ public sealed class StorageService
 
     private static string GetDisplayName(string relativeName, WidgetItemKind kind)
     {
-        if (kind is WidgetItemKind.Folder or WidgetItemKind.Shortcut or WidgetItemKind.InternetShortcut) return Path.GetFileNameWithoutExtension(relativeName);
+        if (kind is WidgetItemKind.Folder or WidgetItemKind.Shortcut or WidgetItemKind.InternetShortcut or WidgetItemKind.PortableNote)
+            return Path.GetFileNameWithoutExtension(relativeName);
         return ExplorerShowsExtensions() ? relativeName : Path.GetFileNameWithoutExtension(relativeName);
     }
 

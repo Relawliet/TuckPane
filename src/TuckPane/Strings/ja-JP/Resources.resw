@@ -14,6 +14,12 @@
   <data name="StartupDescription" xml:space="preserve"><value>コントロール画面を表示せず収納ウィンドウを復元します。</value></data>
   <data name="CollapseOutsideTitle" xml:space="preserve"><value>ウィンドウ外のクリックで収納</value></data>
   <data name="CollapseOutsideDescription" xml:space="preserve"><value>展開後に別の場所をクリックすると自動的に収納します。</value></data>
+  <data name="ExpandOnHoverTitle" xml:space="preserve"><value>ホバー時に自動展開</value></data>
+  <data name="ExpandOnHoverDescription" xml:space="preserve"><value>通常の収納ウィンドウに 350 ミリ秒ホバーすると自動的に展開します。</value></data>
+  <data name="CollapseOnPointerLeaveTitle" xml:space="preserve"><value>ポインターが離れたら自動収納</value></data>
+  <data name="CollapseOnPointerLeaveDescription" xml:space="preserve"><value>通常の収納ウィンドウからポインターが離れて 400 ミリ秒後に自動的に収納します。</value></data>
+  <data name="ExclusiveExpansionTitle" xml:space="preserve"><value>展開する収納ウィンドウを 1 つに限定</value></data>
+  <data name="ExclusiveExpansionDescription" xml:space="preserve"><value>オフにすると、フローティング、配置、中継ステーションを同時に展開できます。</value></data>
   <data name="LanguageLabel" xml:space="preserve"><value>言語</value></data>
   <data name="LanguageDescription" xml:space="preserve"><value>再起動せず、すぐに切り替わります。</value></data>
   <data name="LanguageChinese" xml:space="preserve"><value>简体中文</value></data>
@@ -24,11 +30,21 @@
   <data name="ThemeDarkAcrylic" xml:space="preserve"><value>ダークアクリル</value></data>
   <data name="ThemeSolidLight" xml:space="preserve"><value>ソリッドライト</value></data>
   <data name="ThemeSolidDark" xml:space="preserve"><value>ソリッドダーク</value></data>
+  <data name="ThemeFrostedLight" xml:space="preserve"><value>高不透明ライトアクリル</value></data>
+  <data name="ThemeFrostedDark" xml:space="preserve"><value>高不透明ダークアクリル</value></data>
   <data name="AddTitle" xml:space="preserve"><value>収納ウィンドウを追加</value></data>
   <data name="NameLabel" xml:space="preserve"><value>名前</value></data>
   <data name="ModeLabel" xml:space="preserve"><value>モード</value></data>
   <data name="ModeFloating" xml:space="preserve"><value>フローティング</value></data>
   <data name="ModePositioned" xml:space="preserve"><value>配置モード</value></data>
+  <data name="ModeStation" xml:space="preserve"><value>ステーションモード</value></data>
+  <data name="DisplayLabel" xml:space="preserve"><value>ディスプレイ</value></data>
+  <data name="DockEdgeLabel" xml:space="preserve"><value>ドック位置</value></data>
+  <data name="DockLeft" xml:space="preserve"><value>左側</value></data>
+  <data name="DockTop" xml:space="preserve"><value>上側</value></data>
+  <data name="DockRight" xml:space="preserve"><value>右側</value></data>
+  <data name="DockBottom" xml:space="preserve"><value>下側</value></data>
+  <data name="DisplayItemFormat" xml:space="preserve"><value>ディスプレイ {0}（{1}×{2}）</value></data>
   <data name="RowsLabel" xml:space="preserve"><value>行数</value></data>
   <data name="ColumnsLabel" xml:space="preserve"><value>列数</value></data>
   <data name="ThemeLabel" xml:space="preserve"><value>テーマ</value></data>
@@ -49,6 +65,8 @@
   <data name="RecreateStorage" xml:space="preserve"><value>フォルダーを再作成</value></data>
   <data name="ExportDelete" xml:space="preserve"><value>書き出して削除</value></data>
   <data name="DefaultOrganizerName" xml:space="preserve"><value>収納ウィンドウ</value></data>
+  <data name="StationDefaultName" xml:space="preserve"><value>ステーション</value></data>
+  <data name="StationListNameFormat" xml:space="preserve"><value>{0}ステーション</value></data>
   <data name="ItemCountOne" xml:space="preserve"><value>{0} 項目</value></data>
   <data name="ItemCountMany" xml:space="preserve"><value>{0} 項目</value></data>
   <data name="GridLayoutFormat" xml:space="preserve"><value>{0}×{1}</value></data>
@@ -70,6 +88,7 @@
   <data name="StartupErrorTitle" xml:space="preserve"><value>自動起動を更新できません</value></data>
   <data name="CreateErrorTitle" xml:space="preserve"><value>収納ウィンドウを作成できません</value></data>
   <data name="PositionedModeErrorTitle" xml:space="preserve"><value>配置モードを有効にできません</value></data>
+  <data name="OrganizerModeErrorTitle" xml:space="preserve"><value>収納ウィンドウのモードを変更できません</value></data>
   <data name="DeleteTitleFormat" xml:space="preserve"><value>「{0}」を削除しますか？</value></data>
   <data name="DeleteNonEmptyFormat" xml:space="preserve"><value>{0}をデスクトップの「{1}（書き出し）」へ完全に書き出します。</value></data>
   <data name="DeleteEmpty" xml:space="preserve"><value>空のウィンドウなので、デスクトップに空フォルダーは作成しません。</value></data>
@@ -80,6 +99,9 @@
   <data name="OpenFolderErrorTitle" xml:space="preserve"><value>フォルダーを開けません</value></data>
   <data name="MissingStorageMessage" xml:space="preserve"><value>保存先がありません。先にフォルダーを再作成してください。</value></data>
   <data name="MaximumOrganizersError" xml:space="preserve"><value>収納ウィンドウは最大 12 個まで作成できます。</value></data>
+  <data name="StationEdgeOccupiedError" xml:space="preserve"><value>この画面端には既にステーションがあります。別の端を選択してください。</value></data>
+  <data name="StationDuplicateError" xml:space="preserve"><value>ステーションは複製できません。</value></data>
+  <data name="StationManageModeError" xml:space="preserve"><value>ステーションのモードは設定から変更してください。</value></data>
   <data name="NoPrimaryGridError" xml:space="preserve"><value>メインディスプレイに空きグリッドがないため、作成しませんでした。</value></data>
   <data name="PositionedRollbackError" xml:space="preserve"><value>このディスプレイに空きグリッドがないため、フローティングへ戻しました。</value></data>
   <data name="TransferBeforeDelete" xml:space="preserve"><value>ファイル転送が完了してから削除してください。</value></data>
@@ -101,6 +123,7 @@
   <data name="DragReorder" xml:space="preserve"><value>並べ替え</value></data>
   <data name="ReadDropErrorFormat" xml:space="preserve"><value>ドロップ項目を読み取れません：{0}</value></data>
   <data name="MovingItemsFormat" xml:space="preserve"><value>{0}を移動しています。</value></data>
+  <data name="CopyingItemsFormat" xml:space="preserve"><value>{0}をコピーしています。</value></data>
   <data name="MovedItemsFormat" xml:space="preserve"><value>{0}を移動しました。</value></data>
   <data name="MoveCancelled" xml:space="preserve"><value>移動をキャンセルしました。未完了項目の元データは変更されていません。</value></data>
   <data name="RenamePlaceholder" xml:space="preserve"><value>名前を入力</value></data>
@@ -151,8 +174,61 @@
   <data name="MoveToDesktopFailed" xml:space="preserve"><value>項目をデスクトップへ移動できませんでした。</value></data>
   <data name="LanguageErrorTitle" xml:space="preserve"><value>言語を切り替えられません</value></data>
   <data name="CollapseOutsideErrorTitle" xml:space="preserve"><value>自動収納の設定を更新できません</value></data>
+  <data name="ExpandOnHoverErrorTitle" xml:space="preserve"><value>ホバー展開の設定を更新できません</value></data>
+  <data name="CollapseOnPointerLeaveErrorTitle" xml:space="preserve"><value>ポインター離脱時の自動収納設定を更新できません</value></data>
+  <data name="ExclusiveExpansionErrorTitle" xml:space="preserve"><value>単一ウィンドウ展開設定を更新できません</value></data>
+  <data name="FileMenuErrorFormat" xml:space="preserve"><value>「{0}」のメニューを開けませんでした：{1}</value></data>
+  <data name="CutItemErrorFormat" xml:space="preserve"><value>「{0}」を切り取れませんでした：{1}</value></data>
+  <data name="DeleteItemErrorFormat" xml:space="preserve"><value>「{0}」をごみ箱へ移動できませんでした：{1}</value></data>
   <data name="UnsupportedReparsePathFormat" xml:space="preserve"><value>ディレクトリに未対応の再解析ポイントがあります：{0}</value></data>
   <data name="CopyVerificationFailed" xml:space="preserve"><value>元のディレクトリと一時コピーが一致しないため、検証に失敗しました。</value></data>
   <data name="WindowMinimize" xml:space="preserve"><value>最小化</value></data>
   <data name="WindowClose" xml:space="preserve"><value>トレイに閉じる</value></data>
+  <data name="ContextPaste" xml:space="preserve"><value>貼り付け</value></data>
+  <data name="ContextNewFolder" xml:space="preserve"><value>新しいフォルダー</value></data>
+  <data name="Copied" xml:space="preserve"><value>コピーしました。</value></data>
+  <data name="CopyCancelled" xml:space="preserve"><value>コピーをキャンセルしました。元の項目は保持されています。</value></data>
+  <data name="CopiedItemsFormat" xml:space="preserve"><value>{0}をコピーしました。</value></data>
+  <data name="PasteCancelled" xml:space="preserve"><value>貼り付けをキャンセルしました。</value></data>
+  <data name="PasteFailedFormat" xml:space="preserve"><value>貼り付けに失敗しました：{0}</value></data>
+  <data name="PastedImageNameFormat" xml:space="preserve"><value>貼り付けた画像 {0}.png</value></data>
+  <data name="PastedImageFormat" xml:space="preserve"><value>画像「{0}」を貼り付けました。</value></data>
+  <data name="NewFolderDefaultName" xml:space="preserve"><value>新しいフォルダー</value></data>
+  <data name="NewFolderTitle" xml:space="preserve"><value>新しいフォルダー</value></data>
+  <data name="Create" xml:space="preserve"><value>作成</value></data>
+  <data name="FolderNameEmptyError" xml:space="preserve"><value>フォルダー名を入力してください。</value></data>
+  <data name="FolderNameInvalidError" xml:space="preserve"><value>名前が長すぎるか、無効な文字を含むか、末尾がピリオドまたは空白です。</value></data>
+  <data name="FolderNameReservedError" xml:space="preserve"><value>Windows の予約名です。別の名前を指定してください。</value></data>
+  <data name="FolderCreatedFormat" xml:space="preserve"><value>フォルダー「{0}」を作成しました。</value></data>
+  <data name="ContextNewNote" xml:space="preserve"><value>新しい付箋</value></data>
+  <data name="ContextRenameNote" xml:space="preserve"><value>付箋の名前を変更</value></data>
+  <data name="ContextDeleteNote" xml:space="preserve"><value>付箋を削除</value></data>
+  <data name="Rename" xml:space="preserve"><value>名前を変更</value></data>
+  <data name="Delete" xml:space="preserve"><value>削除</value></data>
+  <data name="Cut" xml:space="preserve"><value>切り取り</value></data>
+  <data name="NoteRenameTitle" xml:space="preserve"><value>付箋の名前を変更</value></data>
+  <data name="NoteDeleteTitle" xml:space="preserve"><value>付箋を削除</value></data>
+  <data name="NoteDeleteMessageFormat" xml:space="preserve"><value>「{0}」とその内容を完全に削除しますか？</value></data>
+  <data name="NoteColor" xml:space="preserve"><value>付箋の色</value></data>
+  <data name="NoteRuledLines" xml:space="preserve"><value>罫線</value></data>
+  <data name="CloseNote" xml:space="preserve"><value>付箋を閉じる</value></data>
+  <data name="NoteEditorErrorFormat" xml:space="preserve"><value>付箋エディターを起動できませんでした: {0}</value></data>
+  <data name="NoteSaveErrorFormat" xml:space="preserve"><value>付箋を保存できませんでした: {0}</value></data>
+  <data name="NoteDragSaveFailed" xml:space="preserve"><value>ドラッグする前に付箋を保存できませんでした。</value></data>
+  <data name="PortableNoteOpenErrorFormat" xml:space="preserve"><value>「{0}」を開けませんでした: {1}</value></data>
+  <data name="PortableNoteExtensionError" xml:space="preserve"><value>.tucknote ファイルだけを付箋として開けます。</value></data>
+  <data name="NoteTooLarge" xml:space="preserve"><value>この付箋は大きすぎて保存できません。</value></data>
+  <data name="NotePlaceholder" xml:space="preserve"><value>メモを入力するか、画像を貼り付けます…</value></data>
+  <data name="NotePastedImage" xml:space="preserve"><value>貼り付けた画像</value></data>
+  <data name="NoteResizeImage" xml:space="preserve"><value>画像のサイズを変更</value></data>
+  <data name="NoteNameRequired" xml:space="preserve"><value>付箋名を空にすることはできません。</value></data>
+  <data name="NoteNameDuplicate" xml:space="preserve"><value>この収納ウィンドウには同じ名前の付箋があります。</value></data>
+  <data name="NoteRenameHint" xml:space="preserve"><value>タイトルをダブルクリックするか F2 キーを押して付箋名を変更します。</value></data>
+  <data name="NoteThemeRainBlue" xml:space="preserve"><value>レインブルー</value></data>
+  <data name="NoteThemeGraphite" xml:space="preserve"><value>グラファイト</value></data>
+  <data name="NoteThemeSunYellow" xml:space="preserve"><value>ウォームイエロー</value></data>
+  <data name="NoteThemeInkBlack" xml:space="preserve"><value>インクブラック</value></data>
+  <data name="NoteThemeTransparentGlass" xml:space="preserve"><value>カラーガラス</value></data>
+  <data name="NoteThemeCloudPaper" xml:space="preserve"><value>クラウドペーパー</value></data>
+  <data name="NoteThemeWheatPaper" xml:space="preserve"><value>ウィートペーパー</value></data>
 </root>
