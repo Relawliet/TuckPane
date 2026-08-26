@@ -167,4 +167,10 @@
   <data name="ShowConsoleErrorTitle" xml:space="preserve">
     <value>无法更新启动显示设置</value>
   </data>
+  <data name="OrganizerOpacityTitle" xml:space="preserve">
+    <value>收纳盒不透明度</value>
+  </data>
+  <data name="OrganizerOpacityDescription" xml:space="preserve">
+    <value>越高越实，0 为默认毛玻璃。</value>
+  </data>
 </root>

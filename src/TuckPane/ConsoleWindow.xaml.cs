@@ -126,6 +126,7 @@ public sealed partial class ConsoleWindow : Window
         UpdateStartupToggle();
         UpdateCollapseOutsideToggle();
         UpdateShowConsoleToggle();
+        UpdateOrganizerOpacitySlider();
         CreateOrganizerButton.IsEnabled = _host.State.Organizers.Count < OrganizerLimits.MaximumOrganizers;
         CreateLimitText.Visibility = _host.State.Organizers.Count >= OrganizerLimits.MaximumOrganizers ? Visibility.Visible : Visibility.Collapsed;
         PopulateManageList(selectId ?? _selectedId);
@@ -608,6 +609,27 @@ public sealed partial class ConsoleWindow : Window
             UpdateShowConsoleToggle();
             ShowError(AppStrings.Get("ShowConsoleErrorTitle"), ex.Message);
         }
+    }
+
+    private bool _loadingOrganizerOpacity;
+
+    private void UpdateOrganizerOpacitySlider()
+    {
+        if (OrganizerOpacitySlider is null) return;
+        _loadingOrganizerOpacity = true;
+        OrganizerOpacitySlider.Value = Math.Clamp(_host.State.GlobalSettings.OrganizerSurfaceOpacity, 0d, 1d);
+        OrganizerOpacityPercent.Text = $"{Math.Round(OrganizerOpacitySlider.Value * 100)}%";
+        _loadingOrganizerOpacity = false;
+    }
+
+    private void OrganizerOpacitySlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (!_componentReady || _loadingOrganizerOpacity) return;
+        double value = Math.Clamp(OrganizerOpacitySlider.Value, 0d, 1d);
+        OrganizerOpacityPercent.Text = $"{Math.Round(value * 100)}%";
+        _host.ApplyOrganizerSurfaceOpacity(value);
+        _stateSaveTimer.Stop();
+        _stateSaveTimer.Start();
     }
 
     private async void LanguageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)

@@ -167,4 +167,10 @@
   <data name="ShowConsoleErrorTitle" xml:space="preserve">
     <value>起動時表示設定を更新できませんでした</value>
   </data>
+  <data name="OrganizerOpacityTitle" xml:space="preserve">
+    <value>コンテナの不透明度</value>
+  </data>
+  <data name="OrganizerOpacityDescription" xml:space="preserve">
+    <value>大きいほど濃くなります。0 は既定のアクリルです。</value>
+  </data>
 </root>

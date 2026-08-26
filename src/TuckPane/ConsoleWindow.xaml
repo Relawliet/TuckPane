@@ -211,6 +211,17 @@
                         </Border>
                         <Border Style="{StaticResource Row}">
                             <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /></Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock FontSize="15" Tag="loc:OrganizerOpacityTitle" Text="收纳盒不透明度" />
+                                    <TextBlock Foreground="{StaticResource ConsoleSecondaryTextBrush}" FontSize="12" Tag="loc:OrganizerOpacityDescription" Text="越高越实，0 为默认毛玻璃。" />
+                                </StackPanel>
+                                <controls:ConsoleSlider x:Name="OrganizerOpacitySlider" Grid.Column="1" Style="{StaticResource Pct}" Minimum="0" Maximum="1" StepFrequency="0.05" Value="0" ValueChanged="OrganizerOpacitySlider_ValueChanged" />
+                                <TextBlock x:Name="OrganizerOpacityPercent" Grid.Column="2" VerticalAlignment="Center" TextAlignment="Right" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource Row}">
+                            <Grid ColumnSpacing="12">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center" Spacing="2">
                                     <TextBlock FontSize="15" Tag="loc:LanguageLabel" Text="语言" />

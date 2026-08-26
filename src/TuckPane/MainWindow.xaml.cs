@@ -4117,6 +4117,9 @@ public sealed partial class MainWindow : Window
     {
         GlassTheme theme = _host.GetTheme(_definition);
         bool useAcrylic = !GlassThemePalette.IsSolid(theme) && _uiSettings.AdvancedEffectsEnabled;
+        float extraOpacity = (float)Math.Clamp(_host.State.GlobalSettings.OrganizerSurfaceOpacity, 0d, 1d);
+        _compactSurface.SetExtraSurfaceOpacity(extraOpacity);
+        _expandedSurface.SetExtraSurfaceOpacity(extraOpacity);
         _compactSurface.SetTheme(theme, useAcrylic);
         _expandedSurface.SetTheme(theme, useAcrylic);
         var foreground = new SolidColorBrush(GlassThemePalette.ForegroundColor(theme));

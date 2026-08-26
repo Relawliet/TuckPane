@@ -402,6 +402,14 @@ public sealed class AppHost : IDisposable
         }
     }
 
+    public void ApplyOrganizerSurfaceOpacity(double opacity)
+    {
+        double clamped = Math.Clamp(opacity, 0d, 1d);
+        if (Math.Abs(State.GlobalSettings.OrganizerSurfaceOpacity - clamped) < 0.0001) return;
+        State.GlobalSettings.OrganizerSurfaceOpacity = clamped;
+        foreach (MainWindow window in _windows.Values) window.ApplyInheritedTheme();
+    }
+
     public async Task SetLanguageAsync(AppLanguage language)
     {
         if (!Enum.IsDefined(language)) language = AppLanguage.ChineseSimplified;

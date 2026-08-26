@@ -62,6 +62,7 @@ public sealed class GlobalSettings
     public bool StartWithWindows { get; set; }
     public bool CollapseOnOutsideClick { get; set; } = true;
     public bool ShowConsoleOnLaunch { get; set; }
+    public double OrganizerSurfaceOpacity { get; set; }
     public AppLanguage Language { get; set; } = AppLanguage.ChineseSimplified;
 }
 
