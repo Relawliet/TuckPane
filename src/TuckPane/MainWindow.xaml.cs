@@ -3593,9 +3593,56 @@ public sealed partial class MainWindow : Window
         else if (e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             AutoScrollForDrag(e);
+            UpdateFolderDropFeedback(HitTestFolderItem(e), e);
             e.AcceptedOperation = DataPackageOperation.Move;
-            e.DragUIOverride.Caption = AppStrings.Get("DragIntoApp");
         }
+    }
+
+    private WidgetItem? HitTestFolderItem(DragEventArgs e)
+    {
+        if (!_expanded || _animating || _items.Count == 0) return null;
+        GeneralTransform toRoot = ItemsRepeater.TransformToVisual(WindowRoot);
+        Point rootPoint = toRoot.TransformPoint(e.GetPosition(ItemsRepeater));
+        foreach (DependencyObject hit in VisualTreeHelper.FindElementsInHostCoordinates(rootPoint, WindowRoot))
+        {
+            if (hit is FrameworkElement { DataContext: WidgetItem { Kind: WidgetItemKind.Folder } item }) return item;
+        }
+        return null;
+    }
+
+    private WidgetItem? _folderDropTarget;
+
+    private void UpdateFolderDropFeedback(WidgetItem? folder, DragEventArgs e)
+    {
+        if (ReferenceEquals(folder, _folderDropTarget))
+        {
+            if (folder is not null) e.DragUIOverride.Caption = AppStrings.Format("DropIntoFolderFormat", folder.Name);
+            return;
+        }
+        ClearFolderDropFeedback();
+        _folderDropTarget = folder;
+        if (folder is null)
+        {
+            e.DragUIOverride.Caption = AppStrings.Get("DragIntoApp");
+            return;
+        }
+        e.DragUIOverride.Caption = AppStrings.Format("DropIntoFolderFormat", folder.Name);
+        int index = _items.IndexOf(folder);
+        if (index >= 0 && ItemsRepeater.TryGetElement(index) is FrameworkElement element)
+        {
+            element.Opacity = 0.55;
+        }
+    }
+
+    private void ClearFolderDropFeedback()
+    {
+        if (_folderDropTarget is null) return;
+        int index = _items.IndexOf(_folderDropTarget);
+        if (index >= 0 && ItemsRepeater.TryGetElement(index) is FrameworkElement element)
+        {
+            element.Opacity = 1;
+        }
+        _folderDropTarget = null;
     }
 
     private void ItemsGrid_DragEnter(object sender, DragEventArgs e)
@@ -3608,6 +3655,7 @@ public sealed partial class MainWindow : Window
 
     private void ItemsGrid_DragLeave(object sender, DragEventArgs e)
     {
+        ClearFolderDropFeedback();
         if (_draggedRelativeName is null || _itemReorderSession is not { NativeDragStarted: true } session) return;
         session.LeaveInternalPreview();
         ResetGapTransitionState();
@@ -3662,7 +3710,9 @@ public sealed partial class MainWindow : Window
             e.Handled = true;
             return;
         }
-        await ImportFromDragAsync(e);
+        WidgetItem? folderTarget = HitTestFolderItem(e);
+        ClearFolderDropFeedback();
+        await ImportFromDragAsync(e, folderTarget?.RelativeName);
         e.Handled = true;
     }
 
@@ -3718,7 +3768,7 @@ public sealed partial class MainWindow : Window
         await ExpandAsync(scrollToEnd: true);
     }
 
-    private async Task ImportFromDragAsync(DragEventArgs e)
+    private async Task ImportFromDragAsync(DragEventArgs e, string? targetFolder = null)
     {
         if (!e.DataView.Contains(StandardDataFormats.StorageItems))
         {
@@ -3749,8 +3799,19 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            IReadOnlyList<TransferOutcome> outcomes = await _host.TransferQueue.RunAsync(
-                token => _storage.ImportBatchAsync(paths, progress, token));
+            IReadOnlyList<TransferOutcome> outcomes;
+            try
+            {
+                outcomes = await _host.TransferQueue.RunAsync(
+                    token => _storage.ImportBatchAsync(paths, progress, token, targetFolder));
+            }
+            catch (InvalidOperationException) when (targetFolder is not null)
+            {
+                // 目标文件夹在拖放期间被重命名/删除，回退导入收纳盒根目录
+                targetFolder = null;
+                outcomes = await _host.TransferQueue.RunAsync(
+                    token => _storage.ImportBatchAsync(paths, progress, token));
+            }
             StartWatcher();
             await RefreshCatalogAsync(notifyUnsupported: false);
             await WaitForNextRenderAsync(CancellationToken.None);

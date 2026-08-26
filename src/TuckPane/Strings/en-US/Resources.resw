@@ -173,4 +173,7 @@
   <data name="OrganizerOpacityDescription" xml:space="preserve">
     <value>Higher is more solid. 0 keeps the default acrylic.</value>
   </data>
+  <data name="DropIntoFolderFormat" xml:space="preserve">
+    <value>Move to "{0}"</value>
+  </data>
 </root>
