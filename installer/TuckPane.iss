@@ -1,6 +1,6 @@
 #define MyAppName "TuckPane"
 #ifndef MyAppVersion
-  #define MyAppVersion "2.0.0"
+  #define MyAppVersion "2.0.2"
 #endif
 #ifndef PublishDir
   #define PublishDir "..\artifacts\publish\win-x64"

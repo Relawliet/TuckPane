@@ -9,6 +9,8 @@ namespace TuckPane.Services;
 
 internal static class GlassThemePalette
 {
+    private const float HighOpacityFrostedTintOpacity = 221f / 255f;
+
     internal static bool IsSolid(GlassTheme theme) => theme is GlassTheme.SolidLight or GlassTheme.SolidDark;
 
     internal static bool IsDark(GlassTheme theme) => theme is GlassTheme.Gray or GlassTheme.SolidDark or GlassTheme.FrostedDark;
@@ -23,6 +25,11 @@ internal static class GlassThemePalette
         _ => ColorHelper.FromArgb(255, 226, 229, 233)
     };
 
+    internal static Windows.UI.Color OrganizerSurfaceColor(GlassTheme theme) =>
+        theme == GlassTheme.FrostedLight
+            ? ColorHelper.FromArgb(255, 226, 229, 233)
+            : SurfaceColor(theme);
+
     internal static Windows.UI.Color ForegroundColor(GlassTheme theme) =>
         IsDark(theme) ? ColorHelper.FromArgb(255, 245, 245, 245) : ColorHelper.FromArgb(255, 31, 31, 31);
 
@@ -31,12 +38,20 @@ internal static class GlassThemePalette
         GlassTheme.Gray =>
             (ColorHelper.FromArgb(255, 32, 33, 36), ColorHelper.FromArgb(255, 47, 45, 45), .44f, .18f),
         GlassTheme.FrostedLight =>
-            (ColorHelper.FromArgb(255, 245, 246, 248), ColorHelper.FromArgb(255, 226, 229, 233), .72f, .66f),
+            (ColorHelper.FromArgb(255, 245, 246, 248), ColorHelper.FromArgb(255, 226, 229, 233), HighOpacityFrostedTintOpacity, .66f),
         GlassTheme.FrostedDark =>
-            (ColorHelper.FromArgb(255, 32, 33, 36), ColorHelper.FromArgb(255, 47, 45, 45), .72f, .22f),
+            (ColorHelper.FromArgb(255, 32, 33, 36), ColorHelper.FromArgb(255, 47, 45, 45), HighOpacityFrostedTintOpacity, .22f),
         _ =>
             (ColorHelper.FromArgb(255, 245, 246, 248), ColorHelper.FromArgb(255, 226, 229, 233), .18f, .42f)
     };
+
+    internal static (Windows.UI.Color Tint, Windows.UI.Color Luminosity, float TintOpacity, float LuminosityOpacity) OrganizerAcrylic(GlassTheme theme)
+    {
+        var palette = Acrylic(theme);
+        return theme == GlassTheme.FrostedLight
+            ? (ColorHelper.FromArgb(255, 226, 229, 233), palette.Luminosity, palette.TintOpacity, palette.LuminosityOpacity)
+            : palette;
+    }
 }
 
 internal sealed class NeutralAcrylicBackdrop : XamlSystemBackdrop

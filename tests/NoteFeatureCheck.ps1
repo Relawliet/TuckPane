@@ -4,6 +4,7 @@ param(
     [switch]$ActivationOnly,
     [switch]$PortableNoteOnly,
     [switch]$RuledLinesOnly,
+    [switch]$ChromeOnly,
     [switch]$KeepRoot
 )
 
@@ -38,6 +39,9 @@ public static class TuckPaneNoteInput {
     [DllImport("user32.dll")] public static extern IntPtr MonitorFromWindow(IntPtr window, uint flags);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr window, out Rect rect);
     [DllImport("shcore.dll")] public static extern int GetScaleFactorForMonitor(IntPtr monitor, out int scale);
+    [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
+    [DllImport("dwmapi.dll", EntryPoint="DwmGetWindowAttribute")] public static extern int DwmGetWindowRectAttribute(IntPtr window, int attribute, out Rect value, int size);
+    [DllImport("dwmapi.dll")] public static extern int DwmFlush();
     public static void MoveAbsolute(int x, int y) {
         int left = GetSystemMetrics(76), top = GetSystemMetrics(77);
         int width = GetSystemMetrics(78), height = GetSystemMetrics(79);
@@ -48,6 +52,7 @@ public static class TuckPaneNoteInput {
 }
 '@
 Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
 $primaryDevice = [Windows.Forms.Screen]::PrimaryScreen.DeviceName
 
 function Wait-ForCondition([scriptblock]$Condition, [string]$Failure, [int]$TimeoutMs = 8000) {
@@ -159,6 +164,21 @@ try {
             '{"format":"TuckPane.Note","version":1,"theme":3,"fontSize":14,"showRuledLines":false,"placement":null,"html":"<div>中文 gjpqy</div><div>第二行 gjpqy</div>"}',
             [Text.UTF8Encoding]::new($false))
     }
+    if ($ChromeOnly) {
+        $chromeId = '99999999-9999-9999-9999-999999999999'
+        $chromeKey = 'note:' + $chromeId.Replace('-', '')
+        $state.Organizers[0].ItemOrder = @($chromeKey)
+        $state.Organizers[0].Notes = @(@{
+            Id = $chromeId; Name = 'ChromeProbe'; Theme = 0; FontSize = 14
+            ShowRuledLines = $false; Placement = $null
+        })
+        $notesRoot = Join-Path $local 'notes'
+        [IO.Directory]::CreateDirectory($notesRoot) | Out-Null
+        [IO.File]::WriteAllText(
+            (Join-Path $notesRoot ($chromeId.Replace('-', '') + '.json')),
+            '{"Version":1,"Html":""}',
+            [Text.UTF8Encoding]::new($false))
+    }
     [IO.File]::WriteAllText($statePath, ($state | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
 
     $env:TUCKPANE_TEST_ROOT = $runRoot
@@ -213,6 +233,104 @@ try {
     }
     winapp ui wait-for CollapseButton -w $main.hwnd --timeout 5000 | Out-Null
     Set-ProbeForeground $main.hwnd
+
+    if ($ChromeOnly) {
+        $chromeId = '99999999999999999999999999999999'
+        winapp ui wait-for "NoteItem-$chromeId" -w $main.hwnd --timeout 5000 | Out-Null
+        winapp ui click "NoteItem-$chromeId" -w $main.hwnd | Out-Null
+        Wait-ForCondition { (Get-AppWindows $app.Id | Where-Object title -eq 'ChromeProbe').Count -eq 1 } `
+            'Chrome probe note did not open.'
+        $noteWindow = (Get-AppWindows $app.Id | Where-Object title -eq 'ChromeProbe')[0]
+        winapp ui wait-for "CloseNote-$chromeId" -w $noteWindow.hwnd --timeout 5000 | Out-Null
+        $visibleFrame = [TuckPaneNoteInput+Rect]::new()
+        $frameResult = [TuckPaneNoteInput]::DwmGetWindowRectAttribute(
+            [IntPtr]$noteWindow.hwnd, 9, [ref]$visibleFrame, 16)
+        if ($frameResult -lt 0) { throw ('DwmGetWindowAttribute(EXTENDED_FRAME_BOUNDS) failed: 0x{0:X8}.' -f $frameResult) }
+        $captureFrame = {
+            param([string]$Path)
+            $bitmap = [Drawing.Bitmap]::new($visibleFrame.Right - $visibleFrame.Left, $visibleFrame.Bottom - $visibleFrame.Top)
+            $graphics = [Drawing.Graphics]::FromImage($bitmap)
+            try {
+                $graphics.CopyFromScreen($visibleFrame.Left, $visibleFrame.Top, 0, 0, $bitmap.Size)
+                $bitmap.Save($Path, [Drawing.Imaging.ImageFormat]::Png)
+            }
+            finally {
+                $graphics.Dispose()
+                $bitmap.Dispose()
+            }
+        }
+        $beforeShot = Join-Path $runRoot 'chrome-before.png'
+        $afterShot = Join-Path $runRoot 'chrome-after-color-none.png'
+        & $captureFrame $beforeShot
+        [int]$noBorder = -2
+        $setResult = [TuckPaneNoteInput]::DwmSetWindowAttribute(
+            [IntPtr]$noteWindow.hwnd, 34, [ref]$noBorder, 4)
+        if ($setResult -lt 0) { throw ('DwmSetWindowAttribute(BORDER_COLOR) failed: 0x{0:X8}.' -f $setResult) }
+        [TuckPaneNoteInput]::DwmFlush() | Out-Null
+        & $captureFrame $afterShot
+
+        $beforeBitmap = [Drawing.Bitmap]::new($beforeShot)
+        $afterBitmap = [Drawing.Bitmap]::new($afterShot)
+        try {
+            $width = $beforeBitmap.Width
+            $height = $beforeBitmap.Height
+            $positions = @(0.25, 0.5, 0.75)
+            $sides = @{
+                Top = @($positions | ForEach-Object {
+                    [pscustomobject]@{ EdgeX = [int](($width - 1) * $_); EdgeY = 0; InnerX = [int](($width - 1) * $_); InnerY = 2 }
+                })
+                Bottom = @($positions | ForEach-Object {
+                    [pscustomobject]@{ EdgeX = [int](($width - 1) * $_); EdgeY = $height - 1; InnerX = [int](($width - 1) * $_); InnerY = $height - 3 }
+                })
+                Left = @($positions | ForEach-Object {
+                    [pscustomobject]@{ EdgeX = 0; EdgeY = [int](($height - 1) * $_); InnerX = 2; InnerY = [int](($height - 1) * $_) }
+                })
+                Right = @($positions | ForEach-Object {
+                    [pscustomobject]@{ EdgeX = $width - 1; EdgeY = [int](($height - 1) * $_); InnerX = $width - 3; InnerY = [int](($height - 1) * $_) }
+                })
+            }
+            $edgeChanges = @{}
+            $innerContrasts = @{}
+            foreach ($side in $sides.Keys) {
+                $changes = @()
+                $contrasts = @()
+                foreach ($sample in $sides[$side]) {
+                    $beforeEdge = $beforeBitmap.GetPixel($sample.EdgeX, $sample.EdgeY)
+                    $afterEdge = $afterBitmap.GetPixel($sample.EdgeX, $sample.EdgeY)
+                    $beforeInner = $beforeBitmap.GetPixel($sample.InnerX, $sample.InnerY)
+                    $changes += ([Math]::Abs($beforeEdge.R - $afterEdge.R) +
+                        [Math]::Abs($beforeEdge.G - $afterEdge.G) +
+                        [Math]::Abs($beforeEdge.B - $afterEdge.B)) / 3.0
+                    $edgeLuma = 0.2126 * $beforeEdge.R + 0.7152 * $beforeEdge.G + 0.0722 * $beforeEdge.B
+                    $innerLuma = 0.2126 * $beforeInner.R + 0.7152 * $beforeInner.G + 0.0722 * $beforeInner.B
+                    $contrasts += [Math]::Abs($edgeLuma - $innerLuma)
+                }
+                $edgeChanges[$side] = ($changes | Measure-Object -Average).Average
+                $innerContrasts[$side] = ($contrasts | Measure-Object -Average).Average
+            }
+        }
+        finally {
+            $beforeBitmap.Dispose()
+            $afterBitmap.Dispose()
+        }
+
+        $extendedStyle = [TuckPaneNoteInput]::GetWindowLongPtr([IntPtr]$noteWindow.hwnd, -20).ToInt64()
+        $windowStyle = [TuckPaneNoteInput]::GetWindowLongPtr([IntPtr]$noteWindow.hwnd, -16).ToInt64()
+        $failures = [Collections.Generic.List[string]]::new()
+        $largestEdgeChange = ($edgeChanges.Values | Measure-Object -Maximum).Maximum
+        if ($largestEdgeChange -gt 3) {
+            $failures.Add(('Applying COLOR_NONE changed the visible border (RGB delta top={0:F1}, bottom={1:F1}, left={2:F1}, right={3:F1}); before edge/inner luminance contrast top={4:F1}, bottom={5:F1}, left={6:F1}, right={7:F1}.' -f
+                $edgeChanges.Top, $edgeChanges.Bottom, $edgeChanges.Left, $edgeChanges.Right,
+                $innerContrasts.Top, $innerContrasts.Bottom, $innerContrasts.Left, $innerContrasts.Right))
+        }
+        if (($extendedStyle -band 0x8) -eq 0) { $failures.Add('Note lost WS_EX_TOPMOST.') }
+        if (($extendedStyle -band 0x80) -eq 0) { $failures.Add('Note lost WS_EX_TOOLWINDOW.') }
+        if (($extendedStyle -band 0x40000) -ne 0) { $failures.Add('Note unexpectedly has WS_EX_APPWINDOW.') }
+        if (($windowStyle -band 0x40000) -eq 0) { $failures.Add('Note lost WS_THICKFRAME.') }
+        if ($failures.Count -gt 0) { throw ($failures -join [Environment]::NewLine) }
+        Write-Host 'TuckPane note chrome: PASS'
+        return
+    }
 
     if ($RuledLinesOnly) {
         $redirect = Start-Process -FilePath $resolvedExe -ArgumentList ('"{0}"' -f $ruledPortablePath) -PassThru

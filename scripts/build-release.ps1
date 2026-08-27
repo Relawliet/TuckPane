@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version = '2.0.0'
+    [string]$Version = '2.0.2'
 )
 
 $ErrorActionPreference = 'Stop'

@@ -6,6 +6,7 @@ using System.Globalization;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
+using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
 
 namespace TuckPane.Services;
@@ -14,7 +15,7 @@ public sealed class IconCacheService
 {
     private const int JumboSize = 256;
     private const int FallbackSize = 32;
-    private const string CacheVersion = "v3-url-icon";
+    private const string CacheVersion = "v4-image-thumbnail";
     private readonly Dictionary<string, BitmapImage> _memoryCache = new(StringComparer.OrdinalIgnoreCase);
 
     internal static IntPtr CreateDragBitmap(string path, int size)
@@ -73,7 +74,8 @@ public sealed class IconCacheService
 
     private static async Task RefreshAsync(string path, string cachePath)
     {
-        IconSnapshot snapshot = await Task.Run(() => ExtractShellIconPixels(path));
+        IconSnapshot snapshot = await TryExtractImageThumbnailAsync(path)
+            ?? await Task.Run(() => ExtractShellIconPixels(path));
         StorageFolder cacheFolder = await StorageFolder.GetFolderFromPathAsync(AppPaths.IconCacheRoot);
         string temporaryName = $"{Path.GetFileNameWithoutExtension(cachePath)}.{Guid.NewGuid():N}.tmp";
         StorageFile temporary = await cacheFolder.CreateFileAsync(temporaryName, CreationCollisionOption.FailIfExists);
@@ -83,8 +85,8 @@ public sealed class IconCacheService
             using SoftwareBitmap bitmap = SoftwareBitmap.CreateCopyFromBuffer(
                 snapshot.Pixels.AsBuffer(),
                 BitmapPixelFormat.Bgra8,
-                snapshot.Size,
-                snapshot.Size,
+                snapshot.Width,
+                snapshot.Height,
                 BitmapAlphaMode.Premultiplied);
             BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, output);
             encoder.SetSoftwareBitmap(bitmap);
@@ -97,12 +99,42 @@ public sealed class IconCacheService
         }
     }
 
+    private static async Task<IconSnapshot?> TryExtractImageThumbnailAsync(string path)
+    {
+        if (!File.Exists(path)) return null;
+        try
+        {
+            StorageFile file = await StorageFile.GetFileFromPathAsync(path);
+            if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) return null;
+
+            using StorageItemThumbnail thumbnail = await file.GetThumbnailAsync(
+                ThumbnailMode.SingleItem,
+                JumboSize,
+                ThumbnailOptions.ResizeThumbnail);
+            if (thumbnail is null || thumbnail.Type != ThumbnailType.Image) return null;
+
+            BitmapDecoder decoder = await BitmapDecoder.CreateAsync(thumbnail);
+            using SoftwareBitmap bitmap = await decoder.GetSoftwareBitmapAsync(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Premultiplied);
+            uint byteCount = checked((uint)(bitmap.PixelWidth * bitmap.PixelHeight * 4));
+            var buffer = new Windows.Storage.Streams.Buffer(byteCount);
+            bitmap.CopyToBuffer(buffer);
+            return new IconSnapshot(buffer.ToArray(), bitmap.PixelWidth, bitmap.PixelHeight);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"图片缩略图提取失败，已回退 Shell 图标：{path}", ex);
+            return null;
+        }
+    }
+
     internal static IconSnapshot ExtractShellIconPixels(string path)
     {
         IntPtr icon = GetPreferredIcon(path, JumboSize, out int sourceSize);
         try
         {
-            return new(DrawIconPixels(icon, sourceSize), sourceSize);
+            return new(DrawIconPixels(icon, sourceSize), sourceSize, sourceSize);
         }
         finally
         {
@@ -317,5 +349,8 @@ public sealed class IconCacheService
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
-    internal sealed record IconSnapshot(byte[] Pixels, int Size);
+    internal sealed record IconSnapshot(byte[] Pixels, int Width, int Height)
+    {
+        internal int Size => Width;
+    }
 }

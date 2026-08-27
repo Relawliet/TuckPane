@@ -3,6 +3,93 @@ using TuckPane.Models;
 using TuckPane.Services;
 using Windows.ApplicationModel.DataTransfer;
 
+if (args is ["--aug27-frosted-light-tone"])
+{
+    static bool SameColor(Windows.UI.Color left, Windows.UI.Color right) =>
+        left.A == right.A && left.R == right.R && left.G == right.G && left.B == right.B;
+
+    Windows.UI.Color target = Windows.UI.Color.FromArgb(255, 226, 229, 233);
+    Windows.UI.Color common = Windows.UI.Color.FromArgb(255, 245, 246, 248);
+    if (!SameColor(GlassThemePalette.OrganizerAcrylic(GlassTheme.FrostedLight).Tint, target) ||
+        !SameColor(GlassThemePalette.OrganizerSurfaceColor(GlassTheme.FrostedLight), target))
+        throw new InvalidOperationException("收纳窗 FrostedLight 未使用 #E2E5E9。");
+    if (!SameColor(GlassThemePalette.Acrylic(GlassTheme.FrostedLight).Tint, common))
+        throw new InvalidOperationException("设置窗口 FrostedLight 颜色发生变化。");
+
+    Console.WriteLine("PASS: aug27 frosted light organizer tone");
+    return;
+}
+
+if (args is ["--aug27-visual-fixes"])
+{
+    var failures = new List<string>();
+    string root = Path.Combine(Path.GetTempPath(), $"TuckPane-aug27-{Guid.NewGuid():N}");
+    Environment.SetEnvironmentVariable("TUCKPANE_TEST_ROOT", root);
+    Directory.CreateDirectory(root);
+    try
+    {
+        AppPaths.EnsureCreated();
+        string sourcePath = Path.Combine(root, "thumbnail-source.png");
+        string cachePath = Path.Combine(AppPaths.IconCacheRoot, "thumbnail-cache.png");
+        using (var thumbnailSource = new System.Drawing.Bitmap(120, 60))
+        {
+            using System.Drawing.Graphics graphics = System.Drawing.Graphics.FromImage(thumbnailSource);
+            graphics.Clear(System.Drawing.Color.Red);
+            graphics.FillRectangle(System.Drawing.Brushes.Blue, 60, 0, 60, 60);
+            thumbnailSource.Save(sourcePath, System.Drawing.Imaging.ImageFormat.Png);
+        }
+
+        try
+        {
+            var refresh = typeof(IconCacheService).GetMethod(
+                "RefreshAsync",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            if (refresh is null)
+            {
+                failures.Add("IconCacheService.RefreshAsync 不存在。");
+            }
+            else
+            {
+                await (Task)refresh.Invoke(null, [sourcePath, cachePath])!;
+                using var cached = new System.Drawing.Bitmap(cachePath);
+                double ratio = (double)cached.Width / cached.Height;
+                if (Math.Abs(ratio - 2d) > .02d)
+                    failures.Add($"图片缓存未保留 2:1 宽高比，实际为 {cached.Width}x{cached.Height}。");
+
+                System.Drawing.Color leftSample = cached.GetPixel(cached.Width / 4, cached.Height / 2);
+                System.Drawing.Color rightSample = cached.GetPixel(cached.Width * 3 / 4, cached.Height / 2);
+                if (leftSample.R < 200 || leftSample.G > 80 || leftSample.B > 80 ||
+                    rightSample.B < 200 || rightSample.R > 80 || rightSample.G > 80)
+                {
+                    failures.Add($"图片缓存未保留红/蓝原图内容，采样为左({leftSample.R},{leftSample.G},{leftSample.B})、右({rightSample.R},{rightSample.G},{rightSample.B})。");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            failures.Add($"图片缓存真实刷新链执行失败：{ex.GetBaseException().Message}");
+        }
+
+        float expectedTintOpacity = 221f / 255f;
+        const float tolerance = 1e-6f;
+        float lightTintOpacity = GlassThemePalette.Acrylic(GlassTheme.FrostedLight).TintOpacity;
+        float darkTintOpacity = GlassThemePalette.Acrylic(GlassTheme.FrostedDark).TintOpacity;
+        if (Math.Abs(lightTintOpacity - expectedTintOpacity) > tolerance)
+            failures.Add($"FrostedLight TintOpacity 应为 {expectedTintOpacity:F6}，实际为 {lightTintOpacity:F6}。");
+        if (Math.Abs(darkTintOpacity - expectedTintOpacity) > tolerance)
+            failures.Add($"FrostedDark TintOpacity 应为 {expectedTintOpacity:F6}，实际为 {darkTintOpacity:F6}。");
+
+        if (failures.Count > 0) throw new InvalidOperationException(string.Join(Environment.NewLine, failures));
+        Console.WriteLine("PASS: aug27 visual fixes");
+    }
+    finally
+    {
+        try { Directory.Delete(root, recursive: true); }
+        catch { }
+    }
+    return;
+}
+
 if (args is ["--external-file-drop"])
 {
     await ExternalFileDropProbe.RunAsync();

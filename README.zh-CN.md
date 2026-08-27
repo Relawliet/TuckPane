@@ -48,16 +48,16 @@ TuckPane 是一款 Windows 11 x64 桌面文件收纳工具。它把真实文件�
 - 普通收纳窗可选择悬浮后展开、鼠标离开后收缩，也可设置是否只允许一个窗口保持展开。
 - 支持粘贴文件、新建文件夹、通过 Windows 剪贴板剪切项目，以及把真实文件移入回收站。
 - 右键可打开设置、复制空白窗口、切换模式、重命名、打开收纳目录或安全删除窗口。
-- 支持浅色、灰色、纯浅色和纯深色主题，以及 English、简体中文、日本語界面。
+- 支持浅色、灰色、纯浅色、纯深色、白色磨砂和深色磨砂主题，以及 English、简体中文、日本語界面。
 - 启动后只驻留系统托盘。关闭设置窗口只会隐藏；只有托盘菜单中的“退出”会结束 TuckPane。
 
 ## 下载
 
-当前版本：**2.0.0**。完整发布说明请查看 [Latest Release](https://github.com/ch998244353/TuckPane/releases/latest)。
+当前版本：**2.0.2**。完整发布说明请查看 [Latest Release](https://github.com/ch998244353/TuckPane/releases/latest)。
 
-- [TuckPane-2.0.0-win-x64-setup.exe](https://github.com/ch998244353/TuckPane/releases/download/v2.0.0/TuckPane-2.0.0-win-x64-setup.exe)：当前用户离线安装器，创建开始菜单和桌面快捷方式。
-- [TuckPane-2.0.0-win-x64-portable.zip](https://github.com/ch998244353/TuckPane/releases/download/v2.0.0/TuckPane-2.0.0-win-x64-portable.zip)：解压后双击 `00-启动 TuckPane.exe`。
-- [SHA256SUMS.txt](https://github.com/ch998244353/TuckPane/releases/download/v2.0.0/SHA256SUMS.txt)：两个下载文件的 SHA-256 校验值。
+- [TuckPane-2.0.2-win-x64-setup.exe](https://github.com/ch998244353/TuckPane/releases/download/v2.0.2/TuckPane-2.0.2-win-x64-setup.exe)：当前用户离线安装器，创建开始菜单和桌面快捷方式。
+- [TuckPane-2.0.2-win-x64-portable.zip](https://github.com/ch998244353/TuckPane/releases/download/v2.0.2/TuckPane-2.0.2-win-x64-portable.zip)：解压后双击 `00-启动 TuckPane.exe`。
+- [SHA256SUMS.txt](https://github.com/ch998244353/TuckPane/releases/download/v2.0.2/SHA256SUMS.txt)：两个下载文件的 SHA-256 校验值。
 
 两种版本均自带 .NET 与 Windows App SDK，不需要另行安装运行环境。当前安装器未进行代码签名，Windows SmartScreen 可能显示“未知发布者”；需要时可使用 `SHA256SUMS.txt` 校验下载文件。
 

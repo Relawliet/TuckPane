@@ -31,6 +31,7 @@ public sealed partial class NoteWindow : Window
     private readonly AccessibilitySettings _accessibility = new();
     private AppWindow _appWindow = null!;
     private InputNonClientPointerSource? _titleInput;
+    private NativeWindowChromeController? _chrome;
     private IntPtr _hwnd;
     private bool _initialized;
     private bool _editorReady;
@@ -109,6 +110,7 @@ public sealed partial class NoteWindow : Window
         _ = NativeMethods.SetWindowPos(_hwnd, IntPtr.Zero, 0, 0, 0, 0,
             NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOZORDER |
             NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_FRAMECHANGED);
+        _chrome = new NativeWindowChromeController(_hwnd, DispatcherQueue);
         RestorePlacement();
         _appWindow.Changed += AppWindow_Changed;
         _appWindow.Closing += AppWindow_Closing;
@@ -628,6 +630,8 @@ public sealed partial class NoteWindow : Window
     {
         WindowRoot.ActualThemeChanged -= WindowRoot_ActualThemeChanged;
         _saveTimer.Stop();
+        _chrome?.Dispose();
+        _chrome = null;
         Editor.Close();
     }
 

@@ -48,16 +48,16 @@ Drag files and folders directly into a pane, reveal a Station from a monitor edg
 - Optionally expand ordinary panes after hovering, collapse them after the pointer leaves, and choose whether only one pane may stay expanded.
 - Paste files, create folders, cut items through the Windows clipboard, and move deleted real files to the Recycle Bin.
 - Open settings, duplicate an empty pane, switch mode, rename, open its storage directory, or safely delete it from the context menu.
-- Choose Light, Gray, Solid Light, or Solid Dark themes, with English, Simplified Chinese, and Japanese interfaces.
+- Choose Light, Gray, Solid Light, Solid Dark, Frosted Light, or Frosted Dark themes, with English, Simplified Chinese, and Japanese interfaces.
 - Run silently from the system tray. Closing the settings window hides it; only **Exit** in the tray menu terminates TuckPane.
 
 ## Download
 
-Current version: **2.0.0**. See the [Latest Release](https://github.com/ch998244353/TuckPane/releases/latest) for the complete release notes.
+Current version: **2.0.2**. See the [Latest Release](https://github.com/ch998244353/TuckPane/releases/latest) for the complete release notes.
 
-- [TuckPane-2.0.0-win-x64-setup.exe](https://github.com/ch998244353/TuckPane/releases/download/v2.0.0/TuckPane-2.0.0-win-x64-setup.exe): per-user offline installer with Start menu and desktop shortcuts.
-- [TuckPane-2.0.0-win-x64-portable.zip](https://github.com/ch998244353/TuckPane/releases/download/v2.0.0/TuckPane-2.0.0-win-x64-portable.zip): extract it and run `00-启动 TuckPane.exe`.
-- [SHA256SUMS.txt](https://github.com/ch998244353/TuckPane/releases/download/v2.0.0/SHA256SUMS.txt): SHA-256 checksums for both downloads.
+- [TuckPane-2.0.2-win-x64-setup.exe](https://github.com/ch998244353/TuckPane/releases/download/v2.0.2/TuckPane-2.0.2-win-x64-setup.exe): per-user offline installer with Start menu and desktop shortcuts.
+- [TuckPane-2.0.2-win-x64-portable.zip](https://github.com/ch998244353/TuckPane/releases/download/v2.0.2/TuckPane-2.0.2-win-x64-portable.zip): extract it and run `00-启动 TuckPane.exe`.
+- [SHA256SUMS.txt](https://github.com/ch998244353/TuckPane/releases/download/v2.0.2/SHA256SUMS.txt): SHA-256 checksums for both downloads.
 
 Both packages include .NET and the Windows App SDK. No separate runtime is required. The installer is currently unsigned, so Windows SmartScreen may show an “Unknown publisher” warning; verify the download with `SHA256SUMS.txt` when needed.
 

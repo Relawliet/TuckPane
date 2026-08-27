@@ -41,7 +41,7 @@ AppHost.InitializeAsync
         └─ NoteStore（内部正文及 .tucknote 严格读写）
 ```
 
-`AppHost` 是应用级协调者：持有状态、托盘/控制窗口、所有收纳窗口、已打开的内部/外部便签窗口和传输队列，并负责创建、复制、删除、显示及退出。`MainWindow` 只负责一个收纳窗口的界面与交互；它通过宿主回调保存状态或请求跨窗口操作，不拥有整个应用生命周期。`NoteWindow` 是置顶且不进入任务栏/Alt+Tab 的独立工具窗；深色标题区由 WinUI 自定义标题栏的原生 Caption 区负责系统拖动，标题文字区域单独作为输入直通区，双击或按 F2 后切换为内联改名框，按钮和输入框不参与拖动。右上角关闭和 Alt+F4 只保存并隐藏，重新点击内部便签图标或再次打开同一路径的外部便签会复用原窗口。托盘“隐藏全部/显示全部”会同时处理两类便签，普通收纳窗折叠不影响便签。
+`AppHost` 是应用级协调者：持有状态、托盘/控制窗口、所有收纳窗口、已打开的内部/外部便签窗口和传输队列，并负责创建、复制、删除、显示及退出。`MainWindow` 只负责一个收纳窗口的界面与交互；它通过宿主回调保存状态或请求跨窗口操作，不拥有整个应用生命周期。`NoteWindow` 是置顶且不进入任务栏/Alt+Tab 的独立工具窗；深色标题区由 WinUI 自定义标题栏的原生 Caption 区负责系统拖动，标题文字区域单独作为输入直通区，双击或按 F2 后切换为内联改名框，按钮和输入框不参与拖动。便签保留原生可缩放边框能力和系统阴影，但复用 `NativeWindowChromeController` 抑制 DWM 可见边线。右上角关闭和 Alt+F4 只保存并隐藏，重新点击内部便签图标或再次打开同一路径的外部便签会复用原窗口。托盘“隐藏全部/显示全部”会同时处理两类便签，普通收纳窗折叠不影响便签。
 
 Windows App SDK `AppInstance` 在创建 XAML 窗口前完成当前版本的实例注册和激活重定向；`TUCKPANE_TEST_ROOT` 会参与实例键，避免隔离测试撞上正常实例。重定向的 Launch 参数先通过 Windows `CommandLineToArgvW` 规则拆分；仅当首项等于当前 `Environment.ProcessPath` 时才丢弃它，因此带中文、空格和引号的 `.tucknote` 路径会作为独立参数交给主实例。普通二次启动打开总控台，`--startup` 保持托盘启动。原有 `SingleInstanceGuard` mutex/event 继续作为旧版本兼容保护。
 
@@ -63,6 +63,8 @@ Windows App SDK `AppInstance` 在创建 XAML 窗口前完成当前版本的实�
 
 Station 展开时先完成最终窗口边界与显示，再由 `DesktopLayerService.SetExpanded(..., stayTopmost: true)` 脱离桌面 owner 并应用 `WS_EX_TOPMOST`；`WS_EX_NOACTIVATE` 保持不变，因此覆盖普通同完整性级别应用但不抢键盘焦点。收缩完成后 `SetExpanded(false)` 先解除 topmost，再隐藏并恢复折叠状态。普通 `Floating/Positioned` 窗口仍只做一次非持续置顶的抬升，不改变其层级契约。
 
+收起预览和展开窗分别持有 `SoftAcrylicSurface`，并统一使用 `GlassThemePalette` 的收纳窗专用入口。`FrostedLight` 的收纳窗 Tint 与无特效回退色为 `#E2E5E9`，设置窗口通用 Palette 仍保持 `#F5F6F8` / `#F5F5F3`；两者继续使用 `221/255` TintOpacity、相同亮度层、30px 模糊和噪点。`FrostedDark` 的收纳窗与通用参数完全一致。
+
 ## 4. 状态与持久化
 
 - 根状态模型是 `AppStateV2`，当前 Schema 为 5；包含全局设置和 `OrganizerDefinition` 列表。
@@ -82,6 +84,8 @@ Station 展开时先完成最终窗口边界与显示，再由 `DesktopLayerServ
 可移植便签是无 BOM UTF-8 JSON `.tucknote` v1，固定字段为 `format="TuckPane.Note"`、`version=1`、`theme`、`fontSize`、`showRuledLines`、`placement`、`html`；文件名就是窗口标题，不保存 organizer/note ID。读取边界为 64 MiB，并严格拒绝缺失/未知字段、损坏 JSON、未知版本/主题、非法字号或几何。外部便签以打开路径为唯一数据源，保存只通过同目录临时文件原子替换；源文件被移动或删除后只报错，不在旧路径重建。外部便签内联改名会先保存正文，再校验空名、非法/保留文件名和目标冲突，通过同目录 `File.Move` 改真实文件名，并同步打开窗口路径索引、托盘隐藏集合和所属收纳窗 `ItemOrder`；状态保存失败时回滚这些运行时索引和文件名。
 
 文件操作结束后，窗口重新读取目录，并把真实文件与 `Notes` 生成的虚拟图标合并后按 `ItemOrder` 恢复用户顺序；不存在的顺序项会被清理，新项目会进入可见列表。`.tucknote` 在枚举时只获得运行时 `PortableNote` 分类：不写入状态、不改变 Schema，但会隐藏扩展名、使用与内部便签相同的专用图标并支持单击打开；拖出时仍是普通真实文件。应用级 `TransferQueue` 让移动/复制任务按顺序执行并支持取消，避免多个窗口同时改动相同文件时产生竞态。失败通过 `TransferOutcome` 返回，界面只报告真实失败，不把未完成操作写成成功状态。
+
+真实图片由 `IconCacheService` 先请求 Windows `SingleItem` 缩略图并按实际宽高写入 PNG 缓存，收起预览和展开网格共用该缓存并以 `Uniform` 保持完整比例。Windows 未返回图片缩略图或解码失败时回退既有 Shell 图标；目录、快捷方式和其他文件仍走原图标链路。
 
 ## 6. 拖入数据流
 
@@ -147,9 +151,11 @@ Inno 安装器在当前用户 `HKCU\Software\Classes` 注册 `.tucknote` 的 `Tu
 - Shell/COM 失败在共享拖放服务边界转为明确结果或异常；文件传输以逐项结果报告，避免半成功被整体吞掉。
 - `TuckPane.LogicChecks` 是无测试框架的核心回归入口。
 - `TuckPane.LogicChecks --aug26-fixes` 只验证中文默认/显式语言保留、互斥默认值、Move/Copy 操作选择和新增主题枚举/分类。
+- `TuckPane.LogicChecks --aug27-visual-fixes` 只验证非方形图片缓存保留内容/宽高比，以及两款高不透明磨砂共享 `221/255` TintOpacity。
+- `TuckPane.LogicChecks --aug27-frosted-light-tone` 只验证收纳窗白色磨砂调暗、设置窗口 Palette 保持原值，以及透明度、亮度层和深色主题不漂移。
 - `--external-file-drop` 启动跨进程 OLE 探针；隐藏子进程参数 `--external-file-drop-target <Copy|Move|Link>` 只供该探针使用。接收端读取 `FileDrop/CF_HDROP`，验证真实路径和协商结果。
 - `tests/ExternalMainWindowDrop.ps1` 驱动真实 `MainWindow`，覆盖文件与快捷方式窗口内换序，以及文件、文件夹、`.lnk`、`.url` 的标准 FileDrop。任务级 UI 用例只验证真实文件菜单严格包含“剪切、删除”，不再启动或断言完整 Shell 菜单辅助进程。
-- `tests/NoteFeatureCheck.ps1` 在独立 `TUCKPANE_TEST_ROOT` 中验证便签功能；定向入口 `-TitleDragOnly` 覆盖深色标题拖动、按钮隔离、内部内联改名和 Esc，`-PortableNoteOnly` 覆盖 `.tucknote` 跨收纳窗真实移动、单击打开、文件/顺序同步以及重名、保留名和 Esc，`-ActivationOnly` 覆盖带中文空格路径的第二实例重定向，`-RuledLinesOnly` 生成默认/大字号中英文下沉字形截图并核对横线状态。无开关时保留原有空白新建、文字粘贴、图片、颜色、关闭隐藏、传统菜单改名与删除回归。
+- `tests/NoteFeatureCheck.ps1` 在独立 `TUCKPANE_TEST_ROOT` 中验证便签功能；定向入口 `-ChromeOnly` 只比较便签应用 DWM `COLOR_NONE` 前后的真实边缘，并确认 topmost、可缩放 tool-window 样式不变；`-TitleDragOnly` 覆盖深色标题拖动、按钮隔离、内部内联改名和 Esc，`-PortableNoteOnly` 覆盖 `.tucknote` 跨收纳窗真实移动、单击打开、文件/顺序同步以及重名、保留名和 Esc，`-ActivationOnly` 覆盖带中文空格路径的第二实例重定向，`-RuledLinesOnly` 生成默认/大字号中英文下沉字形截图并核对横线状态。无开关时保留原有空白新建、文字粘贴、图片、颜色、关闭隐藏、传统菜单改名与删除回归。
 - `tests/WindowLayerCheck.ps1` 除窗口层级外，还验证普通窗口被覆盖时不悬浮展开、重新暴露后恢复，以及 400ms 离开收缩和提前返回取消；定向入口 `-StationCoveredOnly` 只在 `TUCKPANE_TEST_ROOT` 中验证主屏右边缘 Station 的展开、desktop owner 脱离、持续 topmost、no-activate、不抢焦点、覆盖普通窗口以及隐藏后解除 topmost。
 - 托盘启动回归使用 `scripts/check-tray-startup.ps1`；运行前必须确认没有正常 TuckPane 实例。
 
