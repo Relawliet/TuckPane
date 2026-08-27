@@ -333,6 +333,12 @@ internal static class NativeMethods
     [DllImport("user32.dll", EntryPoint = "FindWindowW", CharSet = CharSet.Unicode)]
     internal static extern IntPtr FindWindow(string? className, string? windowName);
 
+    [DllImport("user32.dll")]
+    internal static extern bool EnableWindow(IntPtr window, bool enable);
+
+    [DllImport("user32.dll")]
+    internal static extern bool IsWindowEnabled(IntPtr window);
+
     [DllImport("user32.dll", EntryPoint = "CreateWindowExW", CharSet = CharSet.Unicode, SetLastError = true)]
     internal static extern IntPtr CreateWindowEx(
         long extendedStyle,

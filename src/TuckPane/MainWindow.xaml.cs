@@ -18,7 +18,9 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Hosting;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
+using Windows.Graphics.Imaging;
 using Windows.Storage;
+using Windows.Storage.Streams;
 using Windows.System;
 using WinUIEx;
 using WinRT.Interop;
@@ -313,26 +315,271 @@ public sealed partial class MainWindow : Window
         LocalizeContextMenu(CompactTileContextMenu);
         LocalizeContextMenu(ExpandedViewContextMenu);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(CollapseButton, AppStrings.Get("Collapse"));
-        for (int index = 0; index < _items.Count; index++)
-        {
-            if (TryGetRealizedItemHost(index, out Border host) &&
-                FindItemPart<StackPanel>(host, "ItemContent") is { ContextFlyout: MenuFlyout flyout })
-            {
-                LocalizeContextMenu(flyout);
-            }
-        }
     }
 
     private static void LocalizeContextMenu(MenuFlyout flyout)
     {
-        string[] keys = ["ContextManage", "ContextDuplicate", "ContextSwitchMode", "ContextRename", "ContextOpenStorage", "ContextDeleteWindow"];
         FontFamily family = new(AppStrings.FontFamily);
-        for (int index = 0; index < Math.Min(keys.Length, flyout.Items.Count); index++)
+        foreach (MenuFlyoutItem item in flyout.Items.OfType<MenuFlyoutItem>())
         {
-            if (flyout.Items[index] is not MenuFlyoutItem item) continue;
-            item.Text = AppStrings.Get(keys[index]);
+            if (item.Tag is not string key || !key.StartsWith("Context", StringComparison.Ordinal)) continue;
+            item.Text = AppStrings.Get(key);
             item.FontFamily = family;
             item.CharacterSpacing = AppStrings.CharacterSpacing;
+        }
+    }
+
+    private int _overlayOpenCount;
+    private bool _shellContextMenuOpen;
+    private NativeMethods.POINT _contextMenuScreenPoint;
+
+    private void ContextMenu_Opened(object sender, object e)
+    {
+        if (ReferenceEquals(sender, ExpandedViewContextMenu))
+        {
+            _ = NativeMethods.GetCursorPos(out _contextMenuScreenPoint);
+            try
+            {
+                DataPackageView data = Clipboard.GetContent();
+                PasteMenuItem.IsEnabled = data.Contains(StandardDataFormats.StorageItems) ||
+                    ShellDragService.TryGetClipboardPaths(out _, out _) ||
+                    data.Contains(StandardDataFormats.Bitmap);
+            }
+            catch
+            {
+                PasteMenuItem.IsEnabled = false;
+            }
+        }
+        _overlayOpenCount++;
+    }
+
+    private void ContextMenu_Closed(object sender, object e)
+    {
+        _overlayOpenCount = Math.Max(0, _overlayOpenCount - 1);
+    }
+
+    private void Item_ContextRequested(UIElement sender, ContextRequestedEventArgs e)
+    {
+        e.Handled = true;
+        if (!_expanded || _animating || _shellDragActive || _shellDropFinalizing || _shellContextMenuOpen ||
+            sender is not Border { Tag: string relativeName } host)
+        {
+            return;
+        }
+
+        WidgetItem? item = _items.FirstOrDefault(candidate =>
+            candidate.RelativeName.Equals(relativeName, StringComparison.OrdinalIgnoreCase));
+        if (item is null) return;
+        ShowFileContextMenu(host, item);
+    }
+
+    private void ShowFileContextMenu(FrameworkElement host, WidgetItem item)
+    {
+        var cut = new MenuFlyoutItem { Text = AppStrings.Get("Cut") };
+        var delete = new MenuFlyoutItem { Text = AppStrings.Get("Delete") };
+        cut.Click += (_, _) => CutFileItem(item);
+        delete.Click += async (_, _) => await DeleteFileItemAsync(item);
+        var flyout = new MenuFlyout();
+        flyout.Items.Add(cut);
+        flyout.Items.Add(delete);
+        _shellContextMenuOpen = true;
+        _overlayOpenCount++;
+        flyout.Closed += (_, _) =>
+        {
+            _shellContextMenuOpen = false;
+            _overlayOpenCount = Math.Max(0, _overlayOpenCount - 1);
+        };
+        try
+        {
+            flyout.ShowAt(host);
+        }
+        catch (Exception ex)
+        {
+            _shellContextMenuOpen = false;
+            _overlayOpenCount = Math.Max(0, _overlayOpenCount - 1);
+            AppLogger.Error($"无法打开文件项目菜单：{item.FullPath}", ex);
+            ShowMessage(AppStrings.Format("FileMenuErrorFormat", item.Name, ex.Message), InfoBarSeverity.Error);
+        }
+    }
+
+    private void CutFileItem(WidgetItem item)
+    {
+        try
+        {
+            ShellDragService.SetCutClipboard(item.FullPath);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"无法剪切文件项目：{item.FullPath}", ex);
+            ShowMessage(AppStrings.Format("CutItemErrorFormat", item.Name, ex.Message), InfoBarSeverity.Error);
+        }
+    }
+
+    private async Task DeleteFileItemAsync(WidgetItem item)
+    {
+        try
+        {
+            await Task.Run(() => ShellDragService.DeleteToRecycleBin(item.FullPath));
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"无法删除文件项目：{item.FullPath}", ex);
+            ShowMessage(AppStrings.Format("CutItemErrorFormat", item.Name, ex.Message), InfoBarSeverity.Error);
+            return;
+        }
+        StartWatcher();
+        await RefreshCatalogAsync(notifyUnsupported: false);
+    }
+
+    private async void PasteMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        _overlayOpenCount++;
+        try
+        {
+            DataPackageView data = Clipboard.GetContent();
+            bool hasNativeFiles = ShellDragService.TryGetClipboardPaths(out string[] nativePaths, out bool nativeMove);
+            if (data.Contains(StandardDataFormats.StorageItems) || hasNativeFiles)
+            {
+                string[] paths;
+                bool move;
+                try
+                {
+                    IReadOnlyList<IStorageItem> items = await data.GetStorageItemsAsync();
+                    paths = items.Select(item => item.Path).Where(path => !string.IsNullOrWhiteSpace(path)).ToArray();
+                    move = data.RequestedOperation.HasFlag(DataPackageOperation.Move);
+                }
+                catch when (hasNativeFiles)
+                {
+                    paths = nativePaths;
+                    move = nativeMove;
+                }
+                if (paths.Length == 0 && hasNativeFiles)
+                {
+                    paths = nativePaths;
+                    move = nativeMove;
+                }
+                if (paths.Length == 0) return;
+
+                var progress = new Progress<TransferProgress>(_ => { });
+                IReadOnlyList<TransferOutcome> outcomes = await _host.TransferQueue.RunAsync(token => move
+                    ? _storage.ImportBatchAsync(paths, progress, token)
+                    : _storage.CopyBatchAsync(paths, progress, token));
+                StartWatcher();
+                await RefreshCatalogAsync(notifyUnsupported: false);
+                await WaitForNextRenderAsync(CancellationToken.None);
+                ScrollToEnd(animated: true);
+
+                TransferOutcome[] warnings = outcomes.Where(outcome => outcome.Status is not (
+                    TransferStatus.Moved or TransferStatus.Copied or TransferStatus.ShortcutCreated)).ToArray();
+                if (warnings.Length > 0)
+                {
+                    ShowMessage(string.Join(" ", warnings.Select(outcome => $"{Path.GetFileName(outcome.SourcePath)}：{outcome.Message}")), InfoBarSeverity.Warning);
+                    return;
+                }
+
+                DataPackageOperation completed = move && outcomes.All(outcome => outcome.Status == TransferStatus.Moved)
+                    ? DataPackageOperation.Move
+                    : DataPackageOperation.Copy;
+                data.ReportOperationCompleted(completed);
+                ShowMessage(AppStrings.Format(move ? "MovedItemsFormat" : "CopiedItemsFormat", AppStrings.FormatItemCount(outcomes.Count)), InfoBarSeverity.Success);
+            }
+            else if (data.Contains(StandardDataFormats.Bitmap))
+            {
+                string path = await SaveClipboardBitmapAsync(data);
+                data.ReportOperationCompleted(DataPackageOperation.Copy);
+                ShowMessage(AppStrings.Format("PastedImageFormat", Path.GetFileName(path)), InfoBarSeverity.Success);
+            }
+            else
+            {
+                return;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            ShowMessage(AppStrings.Get("PasteCancelled"), InfoBarSeverity.Informational);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("从剪贴板粘贴失败。", ex);
+            ShowMessage(AppStrings.Format("PasteFailedFormat", ex.Message), InfoBarSeverity.Error);
+        }
+        finally
+        {
+            _overlayOpenCount = Math.Max(0, _overlayOpenCount - 1);
+        }
+    }
+
+    private async Task<string> SaveClipboardBitmapAsync(DataPackageView data)
+    {
+        RandomAccessStreamReference reference = await data.GetBitmapAsync();
+        _storage.EnsureCreated();
+        string stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        string destination = StorageService.GetUniquePath(Path.Combine(
+            _storage.ItemsRoot,
+            AppStrings.Format("PastedImageNameFormat", stamp)));
+        string staging = Path.Combine(_storage.ItemsRoot, $".glassfolder-staging-{Guid.NewGuid():N}");
+        try
+        {
+            using (File.Create(staging)) { }
+            using IRandomAccessStreamWithContentType input = await reference.OpenReadAsync();
+            BitmapDecoder decoder = await BitmapDecoder.CreateAsync(input);
+            using SoftwareBitmap bitmap = await decoder.GetSoftwareBitmapAsync(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Premultiplied);
+            StorageFile stagingFile = await StorageFile.GetFileFromPathAsync(staging);
+            using (IRandomAccessStream output = await stagingFile.OpenAsync(FileAccessMode.ReadWrite))
+            {
+                BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, output);
+                encoder.SetSoftwareBitmap(bitmap);
+                await encoder.FlushAsync();
+            }
+            File.Move(staging, destination);
+            return destination;
+        }
+        finally
+        {
+            if (File.Exists(staging)) File.Delete(staging);
+        }
+    }
+
+    private async void NewFolderMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        string defaultName = AppStrings.Get("NewFolderDefaultName");
+        string? createdPath = null;
+        try
+        {
+            DisplayInfo display = DisplayPlacementService.ForBounds(_compactBounds);
+            bool accepted = await OwnedDialogWindow.ShowTextInputAsync(
+                _hwnd,
+                display,
+                _host.GetTheme(_definition),
+                AppStrings.Get("NewFolderTitle"),
+                defaultName,
+                AppStrings.Get("Create"),
+                AppStrings.Get("Cancel"),
+                name =>
+                {
+                    try
+                    {
+                        createdPath = _storage.CreateUniqueFolder(name);
+                        return null;
+                    }
+                    catch (Exception ex)
+                    {
+                        return ex.Message;
+                    }
+                });
+            if (!accepted || createdPath is null) return;
+            StartWatcher();
+            await RefreshCatalogAsync(notifyUnsupported: false);
+            await WaitForNextRenderAsync(CancellationToken.None);
+            ScrollToEnd(animated: true);
+            ShowMessage(AppStrings.Format("FolderCreatedFormat", Path.GetFileName(createdPath)), InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("新建文件夹失败。", ex);
+            ShowMessage(ex.Message, InfoBarSeverity.Error);
         }
     }
 
@@ -3768,6 +4015,22 @@ public sealed partial class MainWindow : Window
         await ExpandAsync(scrollToEnd: true);
     }
 
+    private async Task<IReadOnlyList<TransferOutcome>> RunImportWithFallbackAsync(
+        Func<CancellationToken, Task<IReadOnlyList<TransferOutcome>>> primary,
+        string? targetFolder,
+        Func<CancellationToken, Task<IReadOnlyList<TransferOutcome>>> fallback)
+    {
+        try
+        {
+            return await _host.TransferQueue.RunAsync(primary);
+        }
+        catch (InvalidOperationException) when (targetFolder is not null)
+        {
+            // 目标文件夹在拖放期间被重命名/删除，回退导入收纳盒根目录
+            return await _host.TransferQueue.RunAsync(fallback);
+        }
+    }
+
     private async Task ImportFromDragAsync(DragEventArgs e, string? targetFolder = null)
     {
         if (!e.DataView.Contains(StandardDataFormats.StorageItems))
@@ -3800,16 +4063,20 @@ public sealed partial class MainWindow : Window
         try
         {
             IReadOnlyList<TransferOutcome> outcomes;
-            try
+            // 来源只提供 Copy 能力（如压缩包预览、浏览器）时不移动源文件
+            bool sourceAllowsMove = e.DataView.RequestedOperation.HasFlag(DataPackageOperation.Move);
+            if (!sourceAllowsMove)
             {
-                outcomes = await _host.TransferQueue.RunAsync(
-                    token => _storage.ImportBatchAsync(paths, progress, token, targetFolder));
+                outcomes = await RunImportWithFallbackAsync(
+                    token => _storage.CopyBatchAsync(paths, progress, token, targetFolder),
+                    targetFolder,
+                    token => _storage.CopyBatchAsync(paths, progress, token));
             }
-            catch (InvalidOperationException) when (targetFolder is not null)
+            else
             {
-                // 目标文件夹在拖放期间被重命名/删除，回退导入收纳盒根目录
-                targetFolder = null;
-                outcomes = await _host.TransferQueue.RunAsync(
+                outcomes = await RunImportWithFallbackAsync(
+                    token => _storage.ImportBatchAsync(paths, progress, token, targetFolder),
+                    targetFolder,
                     token => _storage.ImportBatchAsync(paths, progress, token));
             }
             StartWatcher();
@@ -3817,10 +4084,11 @@ public sealed partial class MainWindow : Window
             await WaitForNextRenderAsync(CancellationToken.None);
             ScrollToEnd(animated: true);
 
-            TransferOutcome[] warnings = outcomes.Where(outcome => outcome.Status is not (TransferStatus.Moved or TransferStatus.ShortcutCreated)).ToArray();
+            TransferOutcome[] warnings = outcomes.Where(outcome => outcome.Status is not (TransferStatus.Moved or TransferStatus.Copied or TransferStatus.ShortcutCreated)).ToArray();
             if (warnings.Length == 0)
             {
-                ShowMessage(AppStrings.Format("MovedItemsFormat", AppStrings.FormatItemCount(outcomes.Count)), InfoBarSeverity.Success);
+                bool allCopied = outcomes.Count > 0 && outcomes.All(outcome => outcome.Status is TransferStatus.Copied or TransferStatus.ShortcutCreated);
+                ShowMessage(AppStrings.Format(allCopied ? "CopiedItemsFormat" : "MovedItemsFormat", AppStrings.FormatItemCount(outcomes.Count)), InfoBarSeverity.Success);
             }
             else
             {

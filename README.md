@@ -8,6 +8,7 @@ Windows 11 x64 桌面文件收纳工具。
 
 在原项目基础上，本 Fork 做了以下改动：
 
+- **文件操作增强（移植自上游 2.0）**：展开态右键菜单新增「粘贴」「新建文件夹」，磁贴右键支持「剪切」（Windows 剪贴板语义）与「删除」（移入回收站）；粘贴图片自动存为 PNG；从不支持移动的来源拖入时自动改为复制
 - **拖入指定文件夹**：展开收纳盒后，把文件直接拖到某个文件夹磁贴上即可移入该文件夹（悬停高亮提示）；拖到空白处仍导入根目录
 - **收纳盒不透明度**：通用页新增滑块（0-100%），可整体调高毛玻璃的不透明度
 - **锁定位置**：定位模式收纳窗支持位置锁定，恢复时不再受网格吸附影响
@@ -23,8 +24,8 @@ Windows 11 x64 桌面文件收纳工具。
 
 从 [Releases](https://github.com/Relawliet/TuckPane/releases) 下载：
 
-- `TuckPane-1.0.27-win-x64-setup.exe`：离线安装器，无需管理员权限，自动创建桌面快捷方式。
-- `TuckPane-1.0.27-win-x64-portable.zip`：解压后双击 `00-启动 TuckPane.exe`。
+- `TuckPane-1.0.28-win-x64-setup.exe`：离线安装器，无需管理员权限，自动创建桌面快捷方式。
+- `TuckPane-1.0.28-win-x64-portable.zip`：解压后双击 `00-启动 TuckPane.exe`。
 
 两种版本均自带 .NET 与 Windows App SDK，不需要另外安装运行环境。当前安装器未进行代码签名，Windows SmartScreen 可能显示“未知发布者”；可使用同一 Release 中的 `SHA256SUMS.txt` 校验文件。
 

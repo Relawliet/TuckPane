@@ -176,4 +176,61 @@
   <data name="DropIntoFolderFormat" xml:space="preserve">
     <value>「{0}」へ移動</value>
   </data>
+  <data name="ContextPaste" xml:space="preserve">
+    <value>貼り付け</value>
+  </data>
+  <data name="ContextNewFolder" xml:space="preserve">
+    <value>新規フォルダー</value>
+  </data>
+  <data name="Cut" xml:space="preserve">
+    <value>切り取り</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>削除</value>
+  </data>
+  <data name="Copied" xml:space="preserve">
+    <value>コピーしました。</value>
+  </data>
+  <data name="CopyCancelled" xml:space="preserve">
+    <value>コピーを取り消しました。元のファイルは保持されます。</value>
+  </data>
+  <data name="CopiedItemsFormat" xml:space="preserve">
+    <value>{0}件コピーしました。</value>
+  </data>
+  <data name="PasteCancelled" xml:space="preserve">
+    <value>貼り付けを取り消しました。</value>
+  </data>
+  <data name="PasteFailedFormat" xml:space="preserve">
+    <value>貼り付けに失敗しました：{0}</value>
+  </data>
+  <data name="PastedImageFormat" xml:space="preserve">
+    <value>画像を貼り付けました：{0}</value>
+  </data>
+  <data name="PastedImageNameFormat" xml:space="preserve">
+    <value>スクリーンショット-{0}</value>
+  </data>
+  <data name="NewFolderTitle" xml:space="preserve">
+    <value>新規フォルダー</value>
+  </data>
+  <data name="NewFolderDefaultName" xml:space="preserve">
+    <value>新規フォルダー</value>
+  </data>
+  <data name="FolderCreatedFormat" xml:space="preserve">
+    <value>フォルダー「{0}」を作成しました。</value>
+  </data>
+  <data name="FolderNameEmptyError" xml:space="preserve">
+    <value>名前を入力してください。</value>
+  </data>
+  <data name="FolderNameInvalidError" xml:space="preserve">
+    <value>使えない文字が含まれるか、名前が長すぎます。</value>
+  </data>
+  <data name="FolderNameReservedError" xml:space="preserve">
+    <value>この名前はシステムで予約されています。</value>
+  </data>
+  <data name="CutItemErrorFormat" xml:space="preserve">
+    <value>「{0}」を処理できません：{1}</value>
+  </data>
+  <data name="FileMenuErrorFormat" xml:space="preserve">
+    <value>「{0}」に対して操作できません：{1}</value>
+  </data>
 </root>

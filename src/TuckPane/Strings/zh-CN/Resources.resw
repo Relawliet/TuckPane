@@ -176,4 +176,61 @@
   <data name="DropIntoFolderFormat" xml:space="preserve">
     <value>放入「{0}」</value>
   </data>
+  <data name="ContextPaste" xml:space="preserve">
+    <value>粘贴</value>
+  </data>
+  <data name="ContextNewFolder" xml:space="preserve">
+    <value>新建文件夹</value>
+  </data>
+  <data name="Cut" xml:space="preserve">
+    <value>剪切</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="Copied" xml:space="preserve">
+    <value>已复制。</value>
+  </data>
+  <data name="CopyCancelled" xml:space="preserve">
+    <value>复制已取消，源文件保留。</value>
+  </data>
+  <data name="CopiedItemsFormat" xml:space="preserve">
+    <value>已复制 {0}。</value>
+  </data>
+  <data name="PasteCancelled" xml:space="preserve">
+    <value>粘贴已取消。</value>
+  </data>
+  <data name="PasteFailedFormat" xml:space="preserve">
+    <value>粘贴失败：{0}</value>
+  </data>
+  <data name="PastedImageFormat" xml:space="preserve">
+    <value>已粘贴图片 {0}。</value>
+  </data>
+  <data name="PastedImageNameFormat" xml:space="preserve">
+    <value>截图-{0}</value>
+  </data>
+  <data name="NewFolderTitle" xml:space="preserve">
+    <value>新建文件夹</value>
+  </data>
+  <data name="NewFolderDefaultName" xml:space="preserve">
+    <value>新建文件夹</value>
+  </data>
+  <data name="FolderCreatedFormat" xml:space="preserve">
+    <value>已创建文件夹「{0}」。</value>
+  </data>
+  <data name="FolderNameEmptyError" xml:space="preserve">
+    <value>名称不能为空。</value>
+  </data>
+  <data name="FolderNameInvalidError" xml:space="preserve">
+    <value>名称包含非法字符或过长。</value>
+  </data>
+  <data name="FolderNameReservedError" xml:space="preserve">
+    <value>该名称被系统保留。</value>
+  </data>
+  <data name="CutItemErrorFormat" xml:space="preserve">
+    <value>无法处理「{0}」：{1}</value>
+  </data>
+  <data name="FileMenuErrorFormat" xml:space="preserve">
+    <value>无法操作「{0}」：{1}</value>
+  </data>
 </root>

@@ -7,6 +7,13 @@ internal sealed record DisplayInfo(string Device, NativeMethods.RECT Monitor, Na
 internal static class DisplayPlacementService
 {
     internal const double ExpandedSideInsetDip = 28;
+
+    internal static NativeMethods.RECT CalculateCenteredDialogBounds(DisplayInfo display, int widthPx = 480, int heightPx = 260)
+    {
+        int x = display.Work.Left + Math.Max(0, (display.Work.Width - widthPx) / 2);
+        int y = display.Work.Top + Math.Max(0, (display.Work.Height - heightPx) / 3);
+        return new NativeMethods.RECT { Left = x, Top = y, Right = x + widthPx, Bottom = y + heightPx };
+    }
     internal const double ExpandedTopInsetDip = 40.5;
     internal const double ExpandedBottomInsetDip = 28;
     internal const double ItemGapDip = 12;

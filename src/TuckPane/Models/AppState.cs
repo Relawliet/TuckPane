@@ -202,6 +202,7 @@ public enum TransferStatus
 {
     Moved,
     ShortcutCreated,
+    Copied,
     CopiedSourceRetained,
     Cancelled,
     Failed
