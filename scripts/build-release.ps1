@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version = '1.0.2'
+    [string]$Version = '2.0.2'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -56,6 +56,13 @@ Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination $publishR
 Copy-Item -LiteralPath (Join-Path $projectRoot 'THIRD-PARTY-NOTICES.md') -Destination $publishRoot
 Copy-Item -LiteralPath (Join-Path $projectRoot 'licenses') -Destination $publishRoot -Recurse
 
+$portableLauncher = Join-Path $publishRoot '00-启动 TuckPane.exe'
+Copy-Item -LiteralPath (Join-Path $publishRoot 'TuckPane.exe') -Destination $portableLauncher
+if ((Get-FileHash -LiteralPath $portableLauncher -Algorithm SHA256).Hash -ne
+    (Get-FileHash -LiteralPath (Join-Path $publishRoot 'TuckPane.exe') -Algorithm SHA256).Hash) {
+    throw 'Portable launcher does not match TuckPane.exe.'
+}
+
 $privateArtifacts = @(Get-ChildItem -LiteralPath $publishRoot -Recurse -File | Where-Object {
     $_.Extension -eq '.pdb' -or $_.Name -in @('state.json', 'state.json.bak') -or $_.Extension -eq '.log'
 })
@@ -76,13 +83,6 @@ if ($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }
 
 $setupPath = Join-Path $releaseRoot "TuckPane-$Version-win-x64-setup.exe"
 if (-not (Test-Path -LiteralPath $setupPath)) { throw "Installer was not created: $setupPath" }
-
-$portableLauncher = Join-Path $publishRoot '00-启动 TuckPane.exe'
-Copy-Item -LiteralPath (Join-Path $publishRoot 'TuckPane.exe') -Destination $portableLauncher
-if ((Get-FileHash -LiteralPath $portableLauncher -Algorithm SHA256).Hash -ne
-    (Get-FileHash -LiteralPath (Join-Path $publishRoot 'TuckPane.exe') -Algorithm SHA256).Hash) {
-    throw 'Portable launcher does not match TuckPane.exe.'
-}
 
 $portablePath = Join-Path $releaseRoot "TuckPane-$Version-win-x64-portable.zip"
 Compress-Archive -Path (Join-Path $publishRoot '*') -DestinationPath $portablePath -CompressionLevel Optimal

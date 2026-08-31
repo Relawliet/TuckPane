@@ -1,4 +1,5 @@
 using System.Text.Json;
+using TuckPane.Core;
 using TuckPane.Models;
 
 namespace TuckPane.Services;
@@ -21,7 +22,7 @@ public sealed class StateStore
         Directory.CreateDirectory(Path.GetDirectoryName(_statePath)!);
         LoadResult? loaded = await TryLoadAsync(_statePath) ?? await TryLoadAsync(_backupPath);
         AppStateV2 state = Normalize(loaded?.State ?? new AppStateV2());
-        if (loaded is { WasLegacy: true }) await PersistMigrationAsync(state, loaded.SourcePath);
+        if (loaded is { RequiresMigration: true }) await PersistMigrationAsync(state, loaded.SourcePath);
         return state;
     }
 
@@ -35,7 +36,7 @@ public sealed class StateStore
             string json = JsonSerializer.Serialize(Normalize(state), JsonOptions);
             await File.WriteAllTextAsync(temporary, json);
             if (File.Exists(_statePath)) File.Copy(_statePath, _backupPath, overwrite: true);
-            File.Move(temporary, _statePath, overwrite: true);
+            await MoveIntoPlaceAsync(temporary, _statePath);
         }
         finally
         {
@@ -54,11 +55,27 @@ public sealed class StateStore
                 File.Copy(legacyPath, _backupPath, overwrite: true);
             }
             await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(state, JsonOptions));
-            File.Move(temporary, _statePath, overwrite: true);
+            await MoveIntoPlaceAsync(temporary, _statePath);
         }
         finally
         {
             _saveGate.Release();
+        }
+    }
+
+    private static async Task MoveIntoPlaceAsync(string temporary, string destination)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            try
+            {
+                File.Move(temporary, destination, overwrite: true);
+                return;
+            }
+            catch (Exception ex) when (attempt < 9 && ex is IOException or UnauthorizedAccessException)
+            {
+                await Task.Delay(50);
+            }
         }
     }
 
@@ -75,7 +92,10 @@ public sealed class StateStore
             if (schemaVersion >= 2)
             {
                 AppStateV2? current = JsonSerializer.Deserialize<AppStateV2>(json, JsonOptions);
-                return current is null ? null : new(current, false, path);
+                if (current is null) return null;
+                current.GlobalSettings ??= new GlobalSettings();
+                if (schemaVersion < 3) current.GlobalSettings.Language = AppLanguage.ChineseSimplified;
+                return new(current, schemaVersion < 5, path);
             }
 
             AppStateV1 legacy = JsonSerializer.Deserialize<AppStateV1>(json, JsonOptions) ?? new AppStateV1();
@@ -88,7 +108,7 @@ public sealed class StateStore
         }
     }
 
-    private sealed record LoadResult(AppStateV2 State, bool WasLegacy, string SourcePath);
+    private sealed record LoadResult(AppStateV2 State, bool RequiresMigration, string SourcePath);
 
     internal static AppStateV2 Migrate(AppStateV1 legacy, DateTime createdAtUtc)
     {
@@ -114,14 +134,27 @@ public sealed class StateStore
 
     internal static AppStateV2 Normalize(AppStateV2 state)
     {
-        state.SchemaVersion = 2;
+        state.SchemaVersion = 5;
         state.GlobalSettings ??= new GlobalSettings();
         if (!Enum.IsDefined(state.GlobalSettings.Theme)) state.GlobalSettings.Theme = GlassTheme.Light;
         if (!Enum.IsDefined(state.GlobalSettings.Language)) state.GlobalSettings.Language = AppLanguage.ChineseSimplified;
         state.Organizers ??= [];
-        state.Organizers = state.Organizers.Take(OrganizerLimits.MaximumOrganizers).ToList();
+        var normalizedOrganizers = new List<OrganizerDefinition>();
+        var stationEdges = new HashSet<OrganizerDockEdge>();
+        int regularCount = 0;
+        foreach (OrganizerDefinition organizer in state.Organizers)
+        {
+            if (!Enum.IsDefined(organizer.PlacementMode)) organizer.PlacementMode = OrganizerPlacementMode.Floating;
+            if (!Enum.IsDefined(organizer.DockEdge)) organizer.DockEdge = OrganizerDockEdge.Right;
+            if (organizer.PlacementMode == OrganizerPlacementMode.Station && !stationEdges.Add(organizer.DockEdge))
+                organizer.PlacementMode = OrganizerPlacementMode.Floating;
+            if (organizer.PlacementMode == OrganizerPlacementMode.Station || regularCount++ < OrganizerLimits.MaximumOrganizers)
+                normalizedOrganizers.Add(organizer);
+        }
+        state.Organizers = normalizedOrganizers;
 
         var ids = new HashSet<Guid>();
+        var noteIds = new HashSet<Guid>();
         foreach (OrganizerDefinition organizer in state.Organizers)
         {
             if (organizer.Id == Guid.Empty || !ids.Add(organizer.Id))
@@ -133,7 +166,9 @@ public sealed class StateStore
             if (organizer.CreatedAtUtc == default) organizer.CreatedAtUtc = DateTimeOffset.UtcNow;
             if (organizer.ThemeOverride is GlassTheme theme && !Enum.IsDefined(theme)) organizer.ThemeOverride = null;
             if (!Enum.IsDefined(organizer.PlacementMode)) organizer.PlacementMode = OrganizerPlacementMode.Floating;
+            if (!Enum.IsDefined(organizer.DockEdge)) organizer.DockEdge = OrganizerDockEdge.Right;
             organizer.Layout ??= new OrganizerLayout();
+            bool station = organizer.PlacementMode == OrganizerPlacementMode.Station;
             if (organizer.Layout.Mode != OrganizerLayoutMode.Grid)
             {
                 organizer.Layout.Mode = OrganizerLayoutMode.Grid;
@@ -142,8 +177,14 @@ public sealed class StateStore
             }
             else
             {
-                organizer.Layout.Rows = Math.Clamp(organizer.Layout.Rows, OrganizerLimits.MinimumGridDimension, OrganizerLimits.MaximumLayoutDimension);
-                organizer.Layout.Columns = Math.Clamp(organizer.Layout.Columns, OrganizerLimits.MinimumGridDimension, OrganizerLimits.MaximumLayoutDimension);
+                organizer.Layout.Rows = Math.Clamp(
+                    organizer.Layout.Rows,
+                    station ? OrganizerLimits.MinimumStationRows : OrganizerLimits.MinimumGridDimension,
+                    station ? OrganizerLimits.MaximumStationRows : OrganizerLimits.MaximumLayoutDimension);
+                organizer.Layout.Columns = Math.Clamp(
+                    organizer.Layout.Columns,
+                    station ? OrganizerLimits.MinimumStationColumns : OrganizerLimits.MinimumGridDimension,
+                    station ? OrganizerLimits.MaximumStationColumns : OrganizerLimits.MaximumLayoutDimension);
             }
             double maximumCompactScale = organizer.PlacementMode == OrganizerPlacementMode.Positioned
                 ? OrganizerLimits.MaximumPositionedCompactScale
@@ -155,7 +196,12 @@ public sealed class StateStore
             organizer.CanvasScale = Math.Clamp(organizer.CanvasScale, .1, 1.2);
             organizer.ItemScale = Math.Clamp(organizer.ItemScale, .5, 1.65);
             organizer.NameScale = Math.Clamp(organizer.NameScale, .6, 1);
-            if (organizer.ManualCanvasBaseWidthDip is not double baseWidth ||
+            if (station)
+            {
+                organizer.ManualCanvasBaseWidthDip = null;
+                organizer.ManualCanvasBaseHeightDip = null;
+            }
+            else if (organizer.ManualCanvasBaseWidthDip is not double baseWidth ||
                 organizer.ManualCanvasBaseHeightDip is not double baseHeight ||
                 !double.IsFinite(baseWidth) || !double.IsFinite(baseHeight) ||
                 baseWidth <= 0 || baseHeight <= 0)
@@ -189,9 +235,44 @@ public sealed class StateStore
                     organizer.StorageRelativePath = AppPaths.CreateStorageRelativePath(organizer.Name, organizer.Id);
                 }
             }
+            organizer.Notes ??= [];
+            var noteNames = new List<string>();
+            foreach (NoteDefinition note in organizer.Notes)
+            {
+                if (note.Id == Guid.Empty || !noteIds.Add(note.Id))
+                {
+                    note.Id = Guid.NewGuid();
+                    noteIds.Add(note.Id);
+                }
+                string name = note.Name?.Trim() ?? string.Empty;
+                note.Name = string.IsNullOrWhiteSpace(name) ||
+                    noteNames.Contains(name, StringComparer.CurrentCultureIgnoreCase)
+                    ? OrganizerNoteRules.CreateDefaultName(noteNames)
+                    : name;
+                noteNames.Add(note.Name);
+                if (!Enum.IsDefined(note.Theme)) note.Theme = NoteTheme.RainBlue;
+                note.FontSize = double.IsFinite(note.FontSize)
+                    ? Math.Clamp(note.FontSize, OrganizerNoteRules.MinimumFontSize, OrganizerNoteRules.MaximumFontSize)
+                    : 14;
+                if (note.Placement is { } placement)
+                {
+                    if (!double.IsFinite(placement.XDip) || !double.IsFinite(placement.YDip) ||
+                        !double.IsFinite(placement.WidthDip) || !double.IsFinite(placement.HeightDip))
+                    {
+                        note.Placement = null;
+                    }
+                    else
+                    {
+                        placement.WidthDip = Math.Clamp(placement.WidthDip, 280, 1600);
+                        placement.HeightDip = Math.Clamp(placement.HeightDip, 220, 1200);
+                    }
+                }
+            }
             organizer.ItemOrder = (organizer.ItemOrder ?? [])
                 .Where(name => !string.IsNullOrWhiteSpace(name))
-                .Select(name => Path.GetFileName(name)!)
+                .Select(name => name.StartsWith("note:", StringComparison.OrdinalIgnoreCase)
+                    ? name
+                    : Path.GetFileName(name)!)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }

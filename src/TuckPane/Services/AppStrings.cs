@@ -62,9 +62,9 @@ public static class AppStrings
 
     public static string GetLanguageTag(AppLanguage language) => language switch
     {
-        AppLanguage.English => "en-US",
+        AppLanguage.ChineseSimplified => "zh-CN",
         AppLanguage.Japanese => "ja-JP",
-        _ => "zh-CN"
+        _ => "en-US"
     };
 
     private static IReadOnlyDictionary<string, string> LoadFallbackCatalog(string languageTag)

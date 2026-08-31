@@ -33,6 +33,9 @@ internal static class DragBoundaryMath
 
 internal static class DragMessageRelay
 {
+    internal static IntPtr PackClientPosition(NativeMethods.POINT point) =>
+        new(unchecked((int)(((uint)(ushort)point.Y << 16) | (ushort)point.X)));
+
     internal static bool TryReserve(ref int pending, ref long lastForwardedAt, long now, long minimumTicks)
     {
         if (Volatile.Read(ref pending) != 0) return false;

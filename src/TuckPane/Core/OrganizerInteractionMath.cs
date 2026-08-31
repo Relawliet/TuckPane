@@ -1,6 +1,7 @@
 namespace TuckPane.Core;
 
 using TuckPane.Models;
+using Windows.ApplicationModel.DataTransfer;
 
 [Flags]
 internal enum CanvasResizeEdge
@@ -15,6 +16,19 @@ internal enum CanvasResizeEdge
 internal static class OrganizerInteractionMath
 {
     internal const double WheelScaleStep = .05;
+
+    internal static bool ShouldStartHoverExpand(
+        bool enabled,
+        bool station,
+        bool expanded,
+        bool animating,
+        bool interactionActive) =>
+        enabled && !station && !expanded && !animating && !interactionActive;
+
+    internal static DataPackageOperation SelectDropOperation(DataPackageOperation allowed) =>
+        allowed.HasFlag(DataPackageOperation.Move) ? DataPackageOperation.Move :
+        allowed.HasFlag(DataPackageOperation.Copy) ? DataPackageOperation.Copy :
+        DataPackageOperation.None;
 
     internal static string CreateCopyName(string sourceName, IEnumerable<string> existingNames, string suffix)
     {
@@ -33,6 +47,7 @@ internal static class OrganizerInteractionMath
         Name = name,
         ThemeOverride = source.ThemeOverride,
         PlacementMode = source.PlacementMode,
+        DockEdge = source.DockEdge,
         Layout = new OrganizerLayout
         {
             Mode = source.Layout.Mode,

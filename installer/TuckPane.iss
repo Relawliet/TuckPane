@@ -1,6 +1,6 @@
 #define MyAppName "TuckPane"
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.2"
+  #define MyAppVersion "2.0.2"
 #endif
 #ifndef PublishDir
   #define PublishDir "..\artifacts\publish\win-x64"
@@ -39,6 +39,7 @@ VersionInfoProductName=TuckPane
 AppMutex=Local\TuckPane-019d2f2d-0bfb-7ff0-98f5-d93093bb0b5d
 CloseApplications=yes
 RestartApplications=no
+ChangesAssociations=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -53,6 +54,10 @@ Name: "{autodesktop}\TuckPane"; Filename: "{app}\TuckPane.exe"
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "GlassFolder"; Flags: deletevalue
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "TuckPane"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Classes\.tucknote"; ValueType: string; ValueName: ""; ValueData: "TuckPane.Note"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Classes\TuckPane.Note"; ValueType: string; ValueName: ""; ValueData: "TuckPane Note"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\TuckPane.Note\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\TuckPane.exe,0"
+Root: HKCU; Subkey: "Software\Classes\TuckPane.Note\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\TuckPane.exe"" ""%1"""
 
 [Run]
 Filename: "{app}\TuckPane.exe"; Description: "{cm:LaunchProgram,TuckPane}"; Flags: nowait postinstall skipifsilent

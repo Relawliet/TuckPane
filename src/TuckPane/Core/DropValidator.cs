@@ -100,6 +100,12 @@ public static class DropValidator
             return true;
         }
 
+        if (extension.Equals(".tucknote", StringComparison.OrdinalIgnoreCase) && File.Exists(path))
+        {
+            kind = WidgetItemKind.PortableNote;
+            return true;
+        }
+
         if (File.Exists(path))
         {
             kind = WidgetItemKind.File;

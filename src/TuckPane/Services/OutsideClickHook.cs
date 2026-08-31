@@ -44,7 +44,6 @@ public sealed class OutsideClickHook : IDisposable
 
         int message = wParam.ToInt32();
         bool isDown = message is NativeMethods.WM_LBUTTONDOWN or NativeMethods.WM_RBUTTONDOWN or NativeMethods.WM_MBUTTONDOWN;
-
         if (isDown && NativeMethods.GetWindowRect(_window, out NativeMethods.RECT windowRect))
         {
             NativeMethods.MSLLHOOKSTRUCT data = System.Runtime.InteropServices.Marshal.PtrToStructure<NativeMethods.MSLLHOOKSTRUCT>(lParam);
@@ -64,7 +63,10 @@ public sealed class OutsideClickHook : IDisposable
         {
             return;
         }
-        _ = NativeMethods.UnhookWindowsHookEx(_hook);
-        _hook = IntPtr.Zero;
+        if (_hook != IntPtr.Zero)
+        {
+            _ = NativeMethods.UnhookWindowsHookEx(_hook);
+            _hook = IntPtr.Zero;
+        }
     }
 }

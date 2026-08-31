@@ -4,23 +4,18 @@ public sealed class DesktopLayerService : IDisposable
 {
     private const uint SpawnWorkerMessage = 0x052C;
     private readonly IntPtr _window;
-    private readonly IntPtr _originalOwner;
+    private readonly IntPtr _expandedOwner;
     private readonly NativeMethods.SubclassProc _activationGuard;
     private static readonly UIntPtr ActivationSubclassId = new(0x47464C59UL);
-    private static IntPtr? _hiddenOwner;
     private IntPtr _desktopIconView;
     private bool _allowActivation;
     private bool _expanded;
+    private bool _stayTopmost;
 
-    public DesktopLayerService(IntPtr window)
+    public DesktopLayerService(IntPtr window, IntPtr expandedOwner)
     {
         _window = window;
-        _originalOwner = NativeMethods.GetWindowLongPtr(window, NativeMethods.GWLP_HWNDPARENT);
-        // 收纳盒窗口创建时没有 owner（GWLP_HWNDPARENT 为 0）。展开时若把它设回 0，
-        // 窗口会变成无 owner 的顶层窗口，从而在任务栏出现按钮。
-        // 用一个不可见的 STATIC 窗口作为 owner，窗口始终是 owned window（不进任务栏），
-        // 同时仍能提到普通窗口之上。
-        if (_originalOwner == IntPtr.Zero) _originalOwner = HiddenOwnerWindow;
+        _expandedOwner = expandedOwner;
         _activationGuard = ActivationGuard;
         ApplyToolWindowStyle();
         _ = NativeMethods.SetWindowSubclass(_window, _activationGuard, ActivationSubclassId, IntPtr.Zero);
@@ -28,27 +23,26 @@ public sealed class DesktopLayerService : IDisposable
         _ = NativeMethods.DwmSetWindowAttribute(window, NativeMethods.DWMWA_WINDOW_CORNER_PREFERENCE, ref corner, sizeof(int));
         int border = NativeMethods.DWMWA_COLOR_NONE;
         _ = NativeMethods.DwmSetWindowAttribute(window, NativeMethods.DWMWA_BORDER_COLOR, ref border, sizeof(int));
-        Reattach(show: false);
+        Reattach();
     }
 
-    public void Reattach(bool show = true)
+    public void Reattach()
     {
         if (_expanded)
         {
-            if (NativeMethods.GetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT) != _originalOwner)
+            if (NativeMethods.GetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT) != _expandedOwner)
             {
-                _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _originalOwner);
+                _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _expandedOwner);
             }
 
             _ = NativeMethods.SetWindowPos(
                 _window,
-                NativeMethods.HWND_TOP,
+                _stayTopmost ? NativeMethods.HWND_TOPMOST : NativeMethods.HWND_TOP,
                 0,
                 0,
                 0,
                 0,
-                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE |
-                (show ? NativeMethods.SWP_SHOWWINDOW : 0));
+                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
             return;
         }
 
@@ -69,8 +63,27 @@ public sealed class DesktopLayerService : IDisposable
             0,
             0,
             0,
-            NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE |
-            (show ? NativeMethods.SWP_SHOWWINDOW : 0));
+            NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
+    }
+
+    public void SetExpanded(bool expanded, bool stayTopmost = false)
+    {
+        if (!expanded && _stayTopmost)
+        {
+            _ = NativeMethods.SetWindowPos(
+                _window,
+                NativeMethods.HWND_NOTOPMOST,
+                0,
+                0,
+                0,
+                0,
+                NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
+        }
+
+        _expanded = expanded;
+        _stayTopmost = expanded && stayTopmost;
+        Reattach();
+        if (expanded && !stayTopmost) RaiseAboveNormalWindows();
     }
 
     public void BringAboveDesktopPeers()
@@ -84,13 +97,6 @@ public sealed class DesktopLayerService : IDisposable
             0,
             0,
             NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
-    }
-
-    public void SetExpanded(bool expanded)
-    {
-        _expanded = expanded;
-        Reattach();
-        if (expanded) RaiseAboveNormalWindows();
     }
 
     public void SetInputActivation(bool enabled)
@@ -110,7 +116,7 @@ public sealed class DesktopLayerService : IDisposable
 
         if (enabled)
         {
-            _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _originalOwner);
+            _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _expandedOwner);
             _ = NativeMethods.SetWindowPos(
                 _window,
                 NativeMethods.HWND_TOP,
@@ -132,39 +138,8 @@ public sealed class DesktopLayerService : IDisposable
         if (NativeMethods.IsWindow(_window))
         {
             _ = NativeMethods.RemoveWindowSubclass(_window, _activationGuard, ActivationSubclassId);
-            _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _originalOwner);
+            _ = NativeMethods.SetWindowLongPtr(_window, NativeMethods.GWLP_HWNDPARENT, _expandedOwner);
         }
-    }
-
-    private static IntPtr HiddenOwnerWindow
-    {
-        get
-        {
-            if (_hiddenOwner is IntPtr owner && owner != IntPtr.Zero) return owner;
-            _hiddenOwner = NativeMethods.CreateWindowEx(
-                NativeMethods.WS_EX_TOOLWINDOW,
-                "STATIC",
-                null,
-                0,
-                0,
-                0,
-                0,
-                0,
-                IntPtr.Zero,
-                IntPtr.Zero,
-                IntPtr.Zero,
-                IntPtr.Zero);
-            return _hiddenOwner ?? IntPtr.Zero;
-        }
-    }
-
-    private void RaiseAboveNormalWindows()
-    {
-        // HWND_TOP cannot reliably cross the foreground boundary for a no-activate window.
-        const uint flags = NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE |
-            NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW;
-        _ = NativeMethods.SetWindowPos(_window, NativeMethods.HWND_TOPMOST, 0, 0, 0, 0, flags);
-        _ = NativeMethods.SetWindowPos(_window, NativeMethods.HWND_NOTOPMOST, 0, 0, 0, 0, flags);
     }
 
     private void ApplyToolWindowStyle()
@@ -191,6 +166,15 @@ public sealed class DesktopLayerService : IDisposable
             0,
             0,
             NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_FRAMECHANGED);
+    }
+
+    private void RaiseAboveNormalWindows()
+    {
+        // HWND_TOP cannot reliably cross the foreground boundary for a no-activate window.
+        const uint flags = NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE |
+            NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW;
+        _ = NativeMethods.SetWindowPos(_window, NativeMethods.HWND_TOPMOST, 0, 0, 0, 0, flags);
+        _ = NativeMethods.SetWindowPos(_window, NativeMethods.HWND_NOTOPMOST, 0, 0, 0, 0, flags);
     }
 
     private IntPtr ActivationGuard(IntPtr hWnd, uint message, UIntPtr wParam, IntPtr lParam, UIntPtr subclassId, IntPtr referenceData)

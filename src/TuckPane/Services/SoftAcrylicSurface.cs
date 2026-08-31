@@ -69,12 +69,12 @@ internal sealed class SoftAcrylicSurface : IDisposable
         {
             next = _lastUseAcrylic
                 ? CreateAcrylicBrush(_lastTheme)
-                : _visual.Compositor.CreateColorBrush(GlassThemePalette.SurfaceColor(_lastTheme));
+                : _visual.Compositor.CreateColorBrush(GlassThemePalette.OrganizerSurfaceColor(_lastTheme));
         }
         catch (Exception ex)
         {
             AppLogger.Error("GPU 毛玻璃材质不可用，已切换为主题纯色。", ex);
-            next = _visual.Compositor.CreateColorBrush(GlassThemePalette.SurfaceColor(_lastTheme));
+            next = _visual.Compositor.CreateColorBrush(GlassThemePalette.OrganizerSurfaceColor(_lastTheme));
         }
         _visual.Brush = next;
         _brush?.Dispose();
@@ -105,7 +105,7 @@ internal sealed class SoftAcrylicSurface : IDisposable
     private CompositionBrush CreateAcrylicBrush(GlassTheme theme)
     {
         Compositor compositor = _visual.Compositor;
-        (Color tint, Color luminosity, float tintOpacity, float luminosityOpacity) = GlassThemePalette.Acrylic(theme);
+        (Color tint, Color luminosity, float tintOpacity, float luminosityOpacity) = GlassThemePalette.OrganizerAcrylic(theme);
         var backdrop = new CompositionEffectSourceParameter("Backdrop");
         var blur = new GaussianBlurEffect
         {

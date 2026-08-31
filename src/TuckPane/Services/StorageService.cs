@@ -10,7 +10,11 @@ public sealed class StorageService
     private readonly string? _ownedContainerPath;
     private readonly bool _exportEmptyDirectory;
 
-    public StorageService(string? itemsRoot = null, bool createIfMissing = true, string? ownedContainerPath = null, bool exportEmptyDirectory = false)
+    public StorageService(
+        string? itemsRoot = null,
+        bool createIfMissing = true,
+        string? ownedContainerPath = null,
+        bool exportEmptyDirectory = false)
     {
         _itemsRoot = Path.GetFullPath(itemsRoot ?? AppPaths.ItemsRoot).TrimEnd(Path.DirectorySeparatorChar);
         _ownedContainerPath = string.IsNullOrWhiteSpace(ownedContainerPath)
@@ -188,7 +192,7 @@ public sealed class StorageService
             return new(_itemsRoot, null, TransferStatus.Moved, AppStrings.Get("EmptyDeleted"));
         }
 
-        string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        string desktop = AppPaths.DesktopRoot;
         if (string.IsNullOrWhiteSpace(desktop)) return new(_itemsRoot, null, TransferStatus.Failed, AppStrings.Get("DesktopUnavailable"));
         Directory.CreateDirectory(desktop);
         string destination = GetUniquePath(Path.Combine(desktop, AppStrings.Format("ExportFolderFormat", SanitizeName(windowName))), isDirectory: true);
@@ -323,6 +327,52 @@ public sealed class StorageService
         return await MovePathAsync(source, destination, progress, cancellationToken, rollbackDestinationOnSourceDeleteFailure: false);
     }
 
+    private async Task<TransferOutcome> CopyOneAsync(
+        string sourcePath,
+        IProgress<TransferProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        string source = Path.GetFullPath(sourcePath).TrimEnd(Path.DirectorySeparatorChar);
+        bool isDirectory = Directory.Exists(source);
+        string destination = GetUniquePath(Path.Combine(_itemsRoot, Path.GetFileName(source)), isDirectory);
+        string staging = Path.Combine(_itemsRoot, $".glassfolder-staging-{Guid.NewGuid():N}");
+        string itemName = Path.GetFileName(source);
+        try
+        {
+            long totalBytes = isDirectory ? BuildManifest(source).TotalBytes : new FileInfo(source).Length;
+            long copiedBytes = 0;
+            Action<int> report = bytes =>
+            {
+                copiedBytes += bytes;
+                progress?.Report(new TransferProgress(itemName, copiedBytes, totalBytes));
+            };
+            if (isDirectory)
+            {
+                await CopyDirectoryAsync(source, staging, report, cancellationToken);
+                VerifyEquivalent(source, staging);
+                Directory.Move(staging, destination);
+            }
+            else
+            {
+                await CopyFileAsync(source, staging, report, cancellationToken);
+                if (new FileInfo(source).Length != new FileInfo(staging).Length) throw new IOException(AppStrings.Get("CopySizeMismatch"));
+                File.Move(staging, destination);
+            }
+            return new(source, destination, TransferStatus.Copied, AppStrings.Get("Copied"));
+        }
+        catch (OperationCanceledException)
+        {
+            TryDelete(staging);
+            return new(source, null, TransferStatus.Cancelled, AppStrings.Get("CopyCancelled"));
+        }
+        catch (Exception ex)
+        {
+            TryDelete(staging);
+            AppLogger.Error($"复制导入失败：{source}", ex);
+            return new(source, null, TransferStatus.Failed, ex.Message);
+        }
+    }
+
     private static async Task<TransferOutcome> MovePathAsync(
         string source,
         string destination,
@@ -422,7 +472,8 @@ public sealed class StorageService
 
     private static string GetDisplayName(string relativeName, WidgetItemKind kind)
     {
-        if (kind is WidgetItemKind.Folder or WidgetItemKind.Shortcut or WidgetItemKind.InternetShortcut) return Path.GetFileNameWithoutExtension(relativeName);
+        if (kind is WidgetItemKind.Folder or WidgetItemKind.Shortcut or WidgetItemKind.InternetShortcut or WidgetItemKind.PortableNote)
+            return Path.GetFileNameWithoutExtension(relativeName);
         return ExplorerShowsExtensions() ? relativeName : Path.GetFileNameWithoutExtension(relativeName);
     }
 

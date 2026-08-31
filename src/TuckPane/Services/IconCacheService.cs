@@ -1,11 +1,12 @@
-using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Security.Cryptography;
 using System.Text;
+using System.Globalization;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
+using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
 
 namespace TuckPane.Services;
@@ -14,13 +15,14 @@ public sealed class IconCacheService
 {
     private const int JumboSize = 256;
     private const int FallbackSize = 32;
-    private const string CacheVersion = "v3-url-icon";
+    private const string CacheVersion = "v4-image-thumbnail";
     private readonly Dictionary<string, BitmapImage> _memoryCache = new(StringComparer.OrdinalIgnoreCase);
 
     internal static IntPtr CreateDragBitmap(string path, int size)
     {
         if (size <= 0) throw new ArgumentOutOfRangeException(nameof(size));
         IntPtr icon = GetPreferredIcon(path, size, out _);
+
         try
         {
             byte[] pixels = DrawIconPixels(icon, size);
@@ -72,7 +74,8 @@ public sealed class IconCacheService
 
     private static async Task RefreshAsync(string path, string cachePath)
     {
-        IconSnapshot snapshot = await Task.Run(() => ExtractShellIconPixels(path));
+        IconSnapshot snapshot = await TryExtractImageThumbnailAsync(path)
+            ?? await Task.Run(() => ExtractShellIconPixels(path));
         StorageFolder cacheFolder = await StorageFolder.GetFolderFromPathAsync(AppPaths.IconCacheRoot);
         string temporaryName = $"{Path.GetFileNameWithoutExtension(cachePath)}.{Guid.NewGuid():N}.tmp";
         StorageFile temporary = await cacheFolder.CreateFileAsync(temporaryName, CreationCollisionOption.FailIfExists);
@@ -82,8 +85,8 @@ public sealed class IconCacheService
             using SoftwareBitmap bitmap = SoftwareBitmap.CreateCopyFromBuffer(
                 snapshot.Pixels.AsBuffer(),
                 BitmapPixelFormat.Bgra8,
-                snapshot.Size,
-                snapshot.Size,
+                snapshot.Width,
+                snapshot.Height,
                 BitmapAlphaMode.Premultiplied);
             BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, output);
             encoder.SetSoftwareBitmap(bitmap);
@@ -96,12 +99,42 @@ public sealed class IconCacheService
         }
     }
 
-    private static IconSnapshot ExtractShellIconPixels(string path)
+    private static async Task<IconSnapshot?> TryExtractImageThumbnailAsync(string path)
+    {
+        if (!File.Exists(path)) return null;
+        try
+        {
+            StorageFile file = await StorageFile.GetFileFromPathAsync(path);
+            if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) return null;
+
+            using StorageItemThumbnail thumbnail = await file.GetThumbnailAsync(
+                ThumbnailMode.SingleItem,
+                JumboSize,
+                ThumbnailOptions.ResizeThumbnail);
+            if (thumbnail is null || thumbnail.Type != ThumbnailType.Image) return null;
+
+            BitmapDecoder decoder = await BitmapDecoder.CreateAsync(thumbnail);
+            using SoftwareBitmap bitmap = await decoder.GetSoftwareBitmapAsync(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Premultiplied);
+            uint byteCount = checked((uint)(bitmap.PixelWidth * bitmap.PixelHeight * 4));
+            var buffer = new Windows.Storage.Streams.Buffer(byteCount);
+            bitmap.CopyToBuffer(buffer);
+            return new IconSnapshot(buffer.ToArray(), bitmap.PixelWidth, bitmap.PixelHeight);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"图片缩略图提取失败，已回退 Shell 图标：{path}", ex);
+            return null;
+        }
+    }
+
+    internal static IconSnapshot ExtractShellIconPixels(string path)
     {
         IntPtr icon = GetPreferredIcon(path, JumboSize, out int sourceSize);
         try
         {
-            return new(DrawIconPixels(icon, sourceSize), sourceSize);
+            return new(DrawIconPixels(icon, sourceSize), sourceSize, sourceSize);
         }
         finally
         {
@@ -205,21 +238,8 @@ public sealed class IconCacheService
             ref shellInfo,
             (uint)Marshal.SizeOf<NativeMethods.SHFILEINFO>(),
             NativeMethods.SHGFI_ICON | NativeMethods.SHGFI_LARGEICON | NativeMethods.SHGFI_ADDOVERLAYS);
-        if (result != UIntPtr.Zero && shellInfo.Icon != IntPtr.Zero) return shellInfo.Icon;
-
-        // 兜底：目标图标提取失败（断链快捷方式、目标无图标资源、权限受限等）时，
-        // 退回系统默认图标，避免返回 null 导致收纳盒显示白板。
-        if (shellInfo.Icon != IntPtr.Zero) _ = NativeMethods.DestroyIcon(shellInfo.Icon);
-        string systemIconSource = Path.Combine(Environment.SystemDirectory, "shell32.dll");
-        result = NativeMethods.SHGetFileInfo(
-            systemIconSource,
-            0,
-            ref shellInfo,
-            (uint)Marshal.SizeOf<NativeMethods.SHFILEINFO>(),
-            NativeMethods.SHGFI_ICON | NativeMethods.SHGFI_LARGEICON | NativeMethods.SHGFI_ADDOVERLAYS);
         if (result == UIntPtr.Zero || shellInfo.Icon == IntPtr.Zero)
         {
-            if (shellInfo.Icon != IntPtr.Zero) _ = NativeMethods.DestroyIcon(shellInfo.Icon);
             throw new InvalidOperationException($"Windows Shell 未返回图标：{path}");
         }
         return shellInfo.Icon;
@@ -227,15 +247,6 @@ public sealed class IconCacheService
 
     private static byte[] DrawIconPixels(IntPtr icon, int size)
     {
-        // 优先直接从图标的彩色位图读取真实颜色。DrawIconEx 对调色板型/掩码型图标
-        // 只会绘制单色掩码，导致图标变成白板或灰块（例如部分程序的快捷方式）。
-        byte[]? extracted = ExtractColorPixels(icon, size);
-        if (extracted is not null)
-        {
-            RepairMissingAlpha(extracted);
-            return extracted;
-        }
-
         var bitmapInfo = new NativeMethods.BITMAPINFO
         {
             Header = new NativeMethods.BITMAPINFOHEADER
@@ -275,206 +286,6 @@ public sealed class IconCacheService
             if (bitmap != IntPtr.Zero) _ = NativeMethods.DeleteObject(bitmap);
             if (dc != IntPtr.Zero) _ = NativeMethods.DeleteDC(dc);
         }
-    }
-
-    private static byte[]? ExtractColorPixels(IntPtr icon, int size)
-    {
-        if (!NativeMethods.GetIconInfo(icon, out NativeMethods.ICONINFO iconInfo)) return null;
-        try
-        {
-            if (iconInfo.hbmColor == IntPtr.Zero) return null;
-            byte[]? pixels = ReadDibPixels(iconInfo.hbmColor, iconInfo.hbmMask, out int sourceWidth, out int sourceHeight);
-            if (pixels is null) return null;
-            return ResizePixels(pixels, sourceWidth, sourceHeight, size);
-        }
-        finally
-        {
-            if (iconInfo.hbmColor != IntPtr.Zero) _ = NativeMethods.DeleteObject(iconInfo.hbmColor);
-            if (iconInfo.hbmMask != IntPtr.Zero) _ = NativeMethods.DeleteObject(iconInfo.hbmMask);
-        }
-    }
-
-    private static byte[]? ReadDibPixels(IntPtr hbm, IntPtr hbmMask, out int sourceWidth, out int sourceHeight)
-    {
-        sourceWidth = 0;
-        sourceHeight = 0;
-        IntPtr dc = NativeMethods.CreateCompatibleDC(IntPtr.Zero);
-        if (dc == IntPtr.Zero) return null;
-        try
-        {
-            var bmi = new NativeMethods.BITMAPINFO
-            {
-                Header = new NativeMethods.BITMAPINFOHEADER { Size = (uint)Marshal.SizeOf<NativeMethods.BITMAPINFOHEADER>() }
-            };
-            if (NativeMethods.GetDIBits(dc, hbm, 0, 0, null, ref bmi, NativeMethods.DIB_RGB_COLORS) == 0) return null;
-
-            int width = bmi.Header.Width;
-            int height = bmi.Header.Height;
-            ushort bitCount = bmi.Header.BitCount;
-            int absHeight = Math.Abs(height);
-            bool topDown = height < 0;
-            if (width <= 0 || absHeight == 0) return null;
-            sourceWidth = width;
-            sourceHeight = absHeight;
-
-            if (bitCount is 32 or 24)
-            {
-                int bytesPerPixel = bitCount == 32 ? 4 : 3;
-                int stride = (width * bytesPerPixel + 3) / 4 * 4;
-                byte[] raw = new byte[stride * absHeight];
-                if (NativeMethods.GetDIBits(dc, hbm, 0, (uint)absHeight, raw, ref bmi, NativeMethods.DIB_RGB_COLORS) == 0) return null;
-                return ConvertRgbPixels(raw, width, absHeight, stride, bytesPerPixel, topDown);
-            }
-
-            if (bitCount <= 8)
-            {
-                return ReadPalettePixels(dc, hbm, hbmMask, width, absHeight, bitCount, topDown);
-            }
-
-            return null;
-        }
-        finally
-        {
-            _ = NativeMethods.DeleteDC(dc);
-        }
-    }
-
-    private static byte[] ConvertRgbPixels(byte[] raw, int width, int rows, int stride, int bytesPerPixel, bool topDown)
-    {
-        byte[] dst = new byte[width * rows * 4];
-        for (int y = 0; y < rows; y++)
-        {
-            int sourceRow = topDown ? y : (rows - 1 - y);
-            int source = sourceRow * stride;
-            int destination = y * width * 4;
-            for (int x = 0; x < width; x++)
-            {
-                int pixel = source + x * bytesPerPixel;
-                dst[destination + x * 4 + 0] = raw[pixel + 0];
-                dst[destination + x * 4 + 1] = raw[pixel + 1];
-                dst[destination + x * 4 + 2] = raw[pixel + 2];
-                dst[destination + x * 4 + 3] = bytesPerPixel == 4 ? raw[pixel + 3] : (byte)255;
-            }
-        }
-        return dst;
-    }
-
-    private static byte[]? ReadPalettePixels(IntPtr dc, IntPtr hbm, IntPtr hbmMask, int width, int absHeight, ushort bitCount, bool topDown)
-    {
-        int headerSize = Marshal.SizeOf<NativeMethods.BITMAPINFOHEADER>();
-        int paletteEntries = Math.Min(1 << bitCount, 256);
-        IntPtr buffer = Marshal.AllocHGlobal(headerSize + paletteEntries * 4);
-        try
-        {
-            var header = new NativeMethods.BITMAPINFOHEADER { Size = (uint)headerSize };
-            Marshal.StructureToPtr(header, buffer, false);
-            if (NativeMethods.GetDIBitsBuffer(dc, hbm, 0, 0, null, buffer, NativeMethods.DIB_RGB_COLORS) == 0) return null;
-
-            int bitsPerPixel = bitCount;
-            int stride = (width * bitsPerPixel + 31) / 32 * 4;
-            byte[] raw = new byte[stride * absHeight];
-            if (NativeMethods.GetDIBitsBuffer(dc, hbm, 0, (uint)absHeight, raw, buffer, NativeMethods.DIB_RGB_COLORS) == 0) return null;
-
-            byte[] palette = new byte[paletteEntries * 4];
-            Marshal.Copy(buffer + headerSize, palette, 0, palette.Length);
-
-            byte[]? mask = hbmMask == IntPtr.Zero ? null : ReadMaskPixels(dc, hbmMask, width, absHeight);
-
-            byte[] dst = new byte[width * absHeight * 4];
-            for (int y = 0; y < absHeight; y++)
-            {
-                int sourceRow = topDown ? y : (absHeight - 1 - y);
-                int rowStart = sourceRow * stride;
-                int destination = y * width * 4;
-                for (int x = 0; x < width; x++)
-                {
-                    int index = GetPaletteIndex(raw, rowStart, x, bitsPerPixel);
-                    int paletteOffset = Math.Min(index, paletteEntries - 1) * 4;
-                    dst[destination + x * 4 + 0] = palette[paletteOffset + 0];
-                    dst[destination + x * 4 + 1] = palette[paletteOffset + 1];
-                    dst[destination + x * 4 + 2] = palette[paletteOffset + 2];
-                    dst[destination + x * 4 + 3] = (mask is not null && mask[y * width + x] != 0) ? (byte)0 : (byte)255;
-                }
-            }
-            return dst;
-        }
-        finally
-        {
-            Marshal.FreeHGlobal(buffer);
-        }
-    }
-
-    private static int GetPaletteIndex(byte[] raw, int rowStart, int x, int bitsPerPixel)
-    {
-        return bitsPerPixel switch
-        {
-            8 => raw[rowStart + x],
-            4 => (raw[rowStart + (x >> 1)] >> ((x & 1) == 0 ? 4 : 0)) & 0x0F,
-            2 => (raw[rowStart + (x >> 2)] >> ((3 - (x & 3)) * 2)) & 0x03,
-            1 => (raw[rowStart + (x >> 3)] >> (7 - (x & 7))) & 0x01,
-            _ => 0
-        };
-    }
-
-    private static byte[]? ReadMaskPixels(IntPtr dc, IntPtr hbmMask, int width, int absHeight)
-    {
-        var bmi = new NativeMethods.BITMAPINFO
-        {
-            Header = new NativeMethods.BITMAPINFOHEADER { Size = (uint)Marshal.SizeOf<NativeMethods.BITMAPINFOHEADER>() }
-        };
-        if (NativeMethods.GetDIBits(dc, hbmMask, 0, 0, null, ref bmi, NativeMethods.DIB_RGB_COLORS) == 0) return null;
-        int maskWidth = bmi.Header.Width;
-        int maskHeight = Math.Abs(bmi.Header.Height);
-        bool topDown = bmi.Header.Height < 0;
-        if (maskWidth <= 0 || maskHeight <= 0) return null;
-        int stride = (maskWidth + 31) / 32 * 4;
-        byte[] raw = new byte[stride * maskHeight];
-        if (NativeMethods.GetDIBits(dc, hbmMask, 0, (uint)maskHeight, raw, ref bmi, NativeMethods.DIB_RGB_COLORS) == 0) return null;
-
-        int effectiveHeight = Math.Min(absHeight, maskHeight);
-        byte[] mask = new byte[width * absHeight];
-        for (int y = 0; y < effectiveHeight; y++)
-        {
-            int sourceRow = topDown ? y : (maskHeight - 1 - y);
-            int rowStart = sourceRow * stride;
-            int limit = Math.Min(width, maskWidth);
-            for (int x = 0; x < limit; x++)
-            {
-                int bit = (raw[rowStart + (x >> 3)] >> (7 - (x & 7))) & 1;
-                mask[y * width + x] = (byte)bit;
-            }
-        }
-        return mask;
-    }
-
-    private static byte[] ResizePixels(byte[] source, int sourceWidth, int sourceHeight, int size)
-    {
-        if (sourceWidth == size && sourceHeight == size) return source;
-        byte[] dst = new byte[size * size * 4];
-        for (int y = 0; y < size; y++)
-        {
-            float sourceY = (y + 0.5f) * sourceHeight / size - 0.5f;
-            int y0 = Math.Clamp((int)Math.Floor(sourceY), 0, sourceHeight - 1);
-            int y1 = Math.Clamp(y0 + 1, 0, sourceHeight - 1);
-            float fractionY = sourceY - y0;
-            for (int x = 0; x < size; x++)
-            {
-                float sourceX = (x + 0.5f) * sourceWidth / size - 0.5f;
-                int x0 = Math.Clamp((int)Math.Floor(sourceX), 0, sourceWidth - 1);
-                int x1 = Math.Clamp(x0 + 1, 0, sourceWidth - 1);
-                float fractionX = sourceX - x0;
-                int d = (y * size + x) * 4;
-                for (int channel = 0; channel < 4; channel++)
-                {
-                    float top = source[(y0 * sourceWidth + x0) * 4 + channel] * (1 - fractionX)
-                              + source[(y0 * sourceWidth + x1) * 4 + channel] * fractionX;
-                    float bottom = source[(y1 * sourceWidth + x0) * 4 + channel] * (1 - fractionX)
-                                 + source[(y1 * sourceWidth + x1) * 4 + channel] * fractionX;
-                    dst[d + channel] = (byte)Math.Clamp(top * (1 - fractionY) + bottom * fractionY, 0, 255);
-                }
-            }
-        }
-        return dst;
     }
 
     private static void RepairMissingAlpha(byte[] pixels)
@@ -538,5 +349,8 @@ public sealed class IconCacheService
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
-    private sealed record IconSnapshot(byte[] Pixels, int Size);
+    internal sealed record IconSnapshot(byte[] Pixels, int Width, int Height)
+    {
+        internal int Size => Width;
+    }
 }

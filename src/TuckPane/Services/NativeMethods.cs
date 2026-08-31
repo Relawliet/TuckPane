@@ -59,6 +59,7 @@ internal static class NativeMethods
     internal const uint WM_NCLBUTTONDOWN = 0x00A1;
     internal const uint WM_NCLBUTTONUP = 0x00A2;
     internal const int HTCLIENT = 1;
+    internal const int HTCAPTION = 2;
     internal const int HTLEFT = 10;
     internal const int HTRIGHT = 11;
     internal const int HTTOP = 12;
@@ -267,16 +268,6 @@ internal static class NativeMethods
         public uint Colors;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct ICONINFO
-    {
-        public bool fIcon;
-        public uint xHotspot;
-        public uint yHotspot;
-        public IntPtr hbmMask;
-        public IntPtr hbmColor;
-    }
-
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     internal struct NOTIFYICONDATA
     {
@@ -332,12 +323,6 @@ internal static class NativeMethods
 
     [DllImport("user32.dll", EntryPoint = "FindWindowW", CharSet = CharSet.Unicode)]
     internal static extern IntPtr FindWindow(string? className, string? windowName);
-
-    [DllImport("user32.dll")]
-    internal static extern bool EnableWindow(IntPtr window, bool enable);
-
-    [DllImport("user32.dll")]
-    internal static extern bool IsWindowEnabled(IntPtr window);
 
     [DllImport("user32.dll", EntryPoint = "CreateWindowExW", CharSet = CharSet.Unicode, SetLastError = true)]
     internal static extern IntPtr CreateWindowEx(
@@ -420,6 +405,14 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool IsChild(IntPtr parent, IntPtr child);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool EnableWindow(IntPtr hWnd, [MarshalAs(UnmanagedType.Bool)] bool enable);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool IsWindowEnabled(IntPtr hWnd);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -510,6 +503,12 @@ internal static class NativeMethods
     [DllImport("kernel32.dll")]
     internal static extern uint GetCurrentThreadId();
 
+    [DllImport("shell32.dll", EntryPoint = "CommandLineToArgvW", CharSet = CharSet.Unicode, SetLastError = true)]
+    internal static extern IntPtr CommandLineToArgvW(string commandLine, out int argumentCount);
+
+    [DllImport("kernel32.dll")]
+    internal static extern IntPtr LocalFree(IntPtr memory);
+
     [DllImport("kernel32.dll", SetLastError = true)]
     internal static extern IntPtr OpenProcess(uint desiredAccess, [MarshalAs(UnmanagedType.Bool)] bool inheritHandle, uint processId);
 
@@ -573,9 +572,6 @@ internal static class NativeMethods
     [DllImport("shell32.dll", EntryPoint = "SHGetFileInfoW", CharSet = CharSet.Unicode)]
     internal static extern UIntPtr SHGetFileInfo(string path, uint attributes, ref SHFILEINFO info, uint infoSize, uint flags);
 
-    [DllImport("shell32.dll")]
-    internal static extern int SHGetImageList(int imageList, ref Guid interfaceId, [MarshalAs(UnmanagedType.Interface)] out IImageList list);
-
     [DllImport("shell32.dll", EntryPoint = "SHDefExtractIconW", CharSet = CharSet.Unicode)]
     internal static extern int SHDefExtractIcon(
         string iconFile,
@@ -593,6 +589,9 @@ internal static class NativeMethods
         StringBuilder value,
         uint size,
         string filePath);
+
+    [DllImport("shell32.dll")]
+    internal static extern int SHGetImageList(int imageList, ref Guid interfaceId, [MarshalAs(UnmanagedType.Interface)] out IImageList list);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     internal static extern IntPtr LoadImage(IntPtr instance, string name, uint type, int width, int height, uint loadFlags);
@@ -650,13 +649,4 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool DrawIconEx(IntPtr hdc, int x, int y, IntPtr icon, int width, int height, uint step, IntPtr brush, uint flags);
-
-    [DllImport("user32.dll")]
-    internal static extern bool GetIconInfo(IntPtr hIcon, out ICONINFO iconInfo);
-
-    [DllImport("gdi32.dll")]
-    internal static extern int GetDIBits(IntPtr hdc, IntPtr hbm, uint start, uint cLines, byte[]? lpvBits, ref BITMAPINFO lpbmi, uint usage);
-
-    [DllImport("gdi32.dll", EntryPoint = "GetDIBits")]
-    internal static extern int GetDIBitsBuffer(IntPtr hdc, IntPtr hbm, uint start, uint cLines, byte[]? lpvBits, IntPtr lpbmi, uint usage);
 }
