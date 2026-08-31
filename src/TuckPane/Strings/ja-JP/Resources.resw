@@ -503,7 +503,7 @@
     <value>画像を貼り付けました：{0}</value>
   </data>
   <data name="PastedImageNameFormat" xml:space="preserve">
-    <value>スクリーンショット-{0}</value>
+    <value>スクリーンショット-{0}.png</value>
   </data>
   <data name="PortableNoteExtensionError" xml:space="preserve">
     <value>.tucknote ファイルだけを付箋として開けます。</value>

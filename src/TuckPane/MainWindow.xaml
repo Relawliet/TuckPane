@@ -184,6 +184,7 @@
                                 PointerMoved="Item_PointerMoved"
                                 PointerPressed="Item_PointerPressed"
                                 PointerReleased="Item_PointerReleased"
+                                DoubleTapped="Item_DoubleTapped"
                                 Tag="{Binding RelativeName}">
                                 <StackPanel
                                     x:Name="ItemContent"

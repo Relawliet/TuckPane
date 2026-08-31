@@ -503,7 +503,7 @@
     <value>已粘贴图片 {0}。</value>
   </data>
   <data name="PastedImageNameFormat" xml:space="preserve">
-    <value>截图-{0}</value>
+    <value>截图-{0}.png</value>
   </data>
   <data name="PortableNoteExtensionError" xml:space="preserve">
     <value>只有 .tucknote 文件能作为便签打开。</value>

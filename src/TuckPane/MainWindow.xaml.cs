@@ -2972,6 +2972,44 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void Item_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (_shellDropFinalizing ||
+            sender is not FrameworkElement { Tag: string relativeName } ||
+            _draggedRelativeName is not null)
+        {
+            return;
+        }
+        WidgetItem? item = _items.FirstOrDefault(candidate =>
+            candidate.RelativeName.Equals(relativeName, StringComparison.OrdinalIgnoreCase));
+        if (item is null) return;
+
+        if (item is { Kind: WidgetItemKind.Note, NoteId: Guid noteId })
+        {
+            _host.OpenNote(_definition.Id, noteId);
+            e.Handled = true;
+            return;
+        }
+
+        if (item.Kind == WidgetItemKind.PortableNote)
+        {
+            _ = _host.OpenExternalNoteAsync(item.FullPath);
+            e.Handled = true;
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(item.FullPath) { UseShellExecute = true });
+            e.Handled = true;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"无法打开：{item.FullPath}", ex);
+            ShowMessage(AppStrings.Format("OpenItemErrorFormat", item.Name, ex.Message), InfoBarSeverity.Error);
+        }
+    }
+
     
     
     
@@ -4405,6 +4443,7 @@ public sealed partial class MainWindow : Window
             AutoScrollForDrag(e);
             UpdateFolderDropFeedback(HitTestFolderItem(e), e);
             e.AcceptedOperation = OrganizerInteractionMath.SelectDropOperation(e.AllowedOperations);
+            _acceptedDropOperation = e.AcceptedOperation;
             if (e.AcceptedOperation != DataPackageOperation.None)
             {
                 WidgetItem? hoverFolder = _folderDropTarget;
@@ -4428,6 +4467,8 @@ public sealed partial class MainWindow : Window
     }
 
     private WidgetItem? _folderDropTarget;
+
+    private DataPackageOperation _acceptedDropOperation;
 
     private void UpdateFolderDropFeedback(WidgetItem? folder, DragEventArgs e)
     {
@@ -4529,8 +4570,8 @@ public sealed partial class MainWindow : Window
         }
         WidgetItem? folderTarget = HitTestFolderItem(e);
         ClearFolderDropFeedback();
-        await ImportFromDragAsync(e, folderTarget?.RelativeName);
         e.Handled = true;
+        await ImportFromDragAsync(e, folderTarget?.RelativeName);
     }
 
     private void WindowRoot_DragEnter(object sender, DragEventArgs e)
@@ -4567,6 +4608,7 @@ public sealed partial class MainWindow : Window
         if (e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             e.AcceptedOperation = OrganizerInteractionMath.SelectDropOperation(e.AllowedOperations);
+            _acceptedDropOperation = e.AcceptedOperation;
             if (e.AcceptedOperation != DataPackageOperation.None)
                 e.DragUIOverride.Caption = AppStrings.Get("DragIntoApp");
         }
@@ -4787,9 +4829,8 @@ public sealed partial class MainWindow : Window
         try
         {
             IReadOnlyList<TransferOutcome> outcomes;
-            // 来源只提供 Copy 能力（如压缩包预览、浏览器）时不移动源文件
-            bool sourceAllowsMove = e.DataView.RequestedOperation.HasFlag(DataPackageOperation.Move);
-            if (!sourceAllowsMove)
+            // 以 Drop 协商结果为准：来源允许移动（Move）才移动源文件，否则复制
+            if (!move)
             {
                 outcomes = await RunImportWithFallbackAsync(
                     token => _storage.CopyBatchAsync(paths, progress, token, targetFolder),

@@ -454,12 +454,30 @@ public sealed class AppHost : IDisposable
 
     internal async Task DeleteNoteAsync(Guid organizerId, Guid noteId)
     {
+        AppLogger.Info($"便签删除：开始 organizer={organizerId} note={noteId}。");
         OrganizerDefinition organizer = State.Organizers.First(item => item.Id == organizerId);
-        NoteDefinition note = organizer.Notes.First(item => item.Id == noteId);
+        NoteDefinition? note = organizer.Notes.FirstOrDefault(item => item.Id == noteId);
+        if (note is null)
+        {
+            AppLogger.Info($"便签删除：便签已不存在，跳过 note={noteId}。");
+            return;
+        }
         int index = organizer.Notes.IndexOf(note);
         int orderIndex = organizer.ItemOrder.FindIndex(key =>
             key.Equals(OrganizerNoteRules.ItemKey(noteId), StringComparison.OrdinalIgnoreCase));
-        if (_noteWindows.Remove(noteId, out NoteWindow? noteWindow)) await noteWindow.ClosePermanentlyAsync();
+        if (_noteWindows.Remove(noteId, out NoteWindow? noteWindow))
+        {
+            try
+            {
+                await noteWindow.ClosePermanentlyAsync();
+                AppLogger.Info($"便签删除：窗口已关闭 note={noteId}。");
+            }
+            catch (Exception closeException)
+            {
+                // 窗口关闭/保存失败不阻断删除流程：内容文件稍后一并清理
+                AppLogger.Error($"便签删除：窗口关闭失败，继续删除 note={noteId}", closeException);
+            }
+        }
         _trayHiddenNotes.Remove(noteId);
         organizer.Notes.RemoveAt(index);
         organizer.ItemOrder.RemoveAll(key => key.Equals(OrganizerNoteRules.ItemKey(noteId), StringComparison.OrdinalIgnoreCase));
