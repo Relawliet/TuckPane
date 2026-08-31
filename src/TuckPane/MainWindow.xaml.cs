@@ -379,7 +379,8 @@ public sealed partial class MainWindow : Window
                 DataPackageView data = Clipboard.GetContent();
                 PasteMenuItem.IsEnabled = data.Contains(StandardDataFormats.StorageItems) ||
                     ShellDragService.TryGetClipboardPaths(out _, out _) ||
-                    data.Contains(StandardDataFormats.Bitmap);
+                    data.Contains(StandardDataFormats.Bitmap) ||
+                    data.Contains(StandardDataFormats.Text);
             }
             catch
             {
@@ -392,12 +393,14 @@ public sealed partial class MainWindow : Window
     private void ContextMenu_Closed(object sender, object e)
     {
         _overlayOpenCount = Math.Max(0, _overlayOpenCount - 1);
+        ResetStationPointerDelay();
     }
 
     private void Item_ContextRequested(UIElement sender, ContextRequestedEventArgs e)
     {
         e.Handled = true;
-        if (!_expanded || _animating || _shellDragActive || _shellDropFinalizing || _shellContextMenuOpen ||
+        if (!_expanded || _animating || _shellDragActive || _shellDropFinalizing ||
+            _shellContextMenuOpen ||
             sender is not Border { Tag: string relativeName } host)
         {
             return;
@@ -406,13 +409,21 @@ public sealed partial class MainWindow : Window
         WidgetItem? item = _items.FirstOrDefault(candidate =>
             candidate.RelativeName.Equals(relativeName, StringComparison.OrdinalIgnoreCase));
         if (item is null) return;
+        if (item is { Kind: WidgetItemKind.Note, NoteId: Guid noteId })
+        {
+            ShowNoteContextMenu(host, noteId);
+            return;
+        }
         ShowFileContextMenu(host, item);
     }
 
     private void ShowFileContextMenu(FrameworkElement host, WidgetItem item)
     {
+        bool station = _definition.PlacementMode == OrganizerPlacementMode.Station;
         var cut = new MenuFlyoutItem { Text = AppStrings.Get("Cut") };
         var delete = new MenuFlyoutItem { Text = AppStrings.Get("Delete") };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(cut, "CutFileMenuItem");
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(delete, "DeleteFileMenuItem");
         cut.Click += (_, _) => CutFileItem(item);
         delete.Click += async (_, _) => await DeleteFileItemAsync(item);
         var flyout = new MenuFlyout();
@@ -420,10 +431,17 @@ public sealed partial class MainWindow : Window
         flyout.Items.Add(delete);
         _shellContextMenuOpen = true;
         _overlayOpenCount++;
+        if (station)
+        {
+            _desktopLayer?.SetInputActivation(true);
+            ResetStationPointerDelay();
+        }
         flyout.Closed += (_, _) =>
         {
             _shellContextMenuOpen = false;
             _overlayOpenCount = Math.Max(0, _overlayOpenCount - 1);
+            if (station) _desktopLayer?.SetInputActivation(false);
+            ResetStationPointerDelay();
         };
         try
         {
@@ -433,6 +451,7 @@ public sealed partial class MainWindow : Window
         {
             _shellContextMenuOpen = false;
             _overlayOpenCount = Math.Max(0, _overlayOpenCount - 1);
+            if (station) _desktopLayer?.SetInputActivation(false);
             AppLogger.Error($"无法打开文件项目菜单：{item.FullPath}", ex);
             ShowMessage(AppStrings.Format("FileMenuErrorFormat", item.Name, ex.Message), InfoBarSeverity.Error);
         }
@@ -455,21 +474,40 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            await Task.Run(() => ShellDragService.DeleteToRecycleBin(item.FullPath));
+            await Task.Run(() =>
+            {
+                if (Directory.Exists(item.FullPath))
+                {
+                    FileSystem.DeleteDirectory(
+                        item.FullPath,
+                        UIOption.OnlyErrorDialogs,
+                        RecycleOption.SendToRecycleBin,
+                        UICancelOption.ThrowException);
+                }
+                else if (File.Exists(item.FullPath))
+                {
+                    FileSystem.DeleteFile(
+                        item.FullPath,
+                        UIOption.OnlyErrorDialogs,
+                        RecycleOption.SendToRecycleBin,
+                        UICancelOption.ThrowException);
+                }
+            });
+            StartWatcher();
+            await RefreshCatalogAsync(notifyUnsupported: false);
         }
         catch (Exception ex)
         {
-            AppLogger.Error($"无法删除文件项目：{item.FullPath}", ex);
-            ShowMessage(AppStrings.Format("CutItemErrorFormat", item.Name, ex.Message), InfoBarSeverity.Error);
-            return;
+            AppLogger.Error($"无法将文件项目移入回收站：{item.FullPath}", ex);
+            ShowMessage(AppStrings.Format("DeleteItemErrorFormat", item.Name, ex.Message), InfoBarSeverity.Error);
         }
-        StartWatcher();
-        await RefreshCatalogAsync(notifyUnsupported: false);
     }
 
     private async void PasteMenuItem_Click(object sender, RoutedEventArgs e)
     {
         _overlayOpenCount++;
+        ResetStationPointerDelay();
+        bool catalogRefreshed = false;
         try
         {
             DataPackageView data = Clipboard.GetContent();
@@ -504,7 +542,7 @@ public sealed partial class MainWindow : Window
                 await RefreshCatalogAsync(notifyUnsupported: false);
                 await WaitForNextRenderAsync(CancellationToken.None);
                 ScrollToEnd(animated: true);
-
+                catalogRefreshed = true;
                 TransferOutcome[] warnings = outcomes.Where(outcome => outcome.Status is not (
                     TransferStatus.Moved or TransferStatus.Copied or TransferStatus.ShortcutCreated)).ToArray();
                 if (warnings.Length > 0)
@@ -525,9 +563,28 @@ public sealed partial class MainWindow : Window
                 data.ReportOperationCompleted(DataPackageOperation.Copy);
                 ShowMessage(AppStrings.Format("PastedImageFormat", Path.GetFileName(path)), InfoBarSeverity.Success);
             }
+            else if (data.Contains(StandardDataFormats.Text))
+            {
+                string text = await data.GetTextAsync();
+                if (string.IsNullOrWhiteSpace(text)) return;
+                NoteDefinition note = await _host.CreateNoteAsync(_definition.Id, text, _contextMenuScreenPoint);
+                _host.OpenNote(_definition.Id, note.Id);
+                data.ReportOperationCompleted(DataPackageOperation.Copy);
+                await WaitForNextRenderAsync(CancellationToken.None);
+                ScrollToEnd(animated: true);
+                return;
+            }
             else
             {
                 return;
+            }
+
+            if (!catalogRefreshed)
+            {
+                StartWatcher();
+                await RefreshCatalogAsync(notifyUnsupported: false);
+                await WaitForNextRenderAsync(CancellationToken.None);
+                ScrollToEnd(animated: true);
             }
         }
         catch (OperationCanceledException)
@@ -542,6 +599,7 @@ public sealed partial class MainWindow : Window
         finally
         {
             _overlayOpenCount = Math.Max(0, _overlayOpenCount - 1);
+            ResetStationPointerDelay();
         }
     }
 
@@ -580,11 +638,18 @@ public sealed partial class MainWindow : Window
 
     private async void NewFolderMenuItem_Click(object sender, RoutedEventArgs e)
     {
+        bool station = _definition.PlacementMode == OrganizerPlacementMode.Station;
+        _overlayOpenCount++;
+        if (station)
+        {
+            _desktopLayer?.SetInputActivation(true);
+            ResetStationPointerDelay();
+        }
         string defaultName = AppStrings.Get("NewFolderDefaultName");
         string? createdPath = null;
         try
         {
-            DisplayInfo display = DisplayPlacementService.ForBounds(_compactBounds);
+            DisplayInfo display = DisplayPlacementService.GetDisplay(_definition.Position?.MonitorDevice);
             bool accepted = await OwnedDialogWindow.ShowTextInputAsync(
                 _hwnd,
                 display,
@@ -616,6 +681,15 @@ public sealed partial class MainWindow : Window
         {
             AppLogger.Error("新建文件夹失败。", ex);
             ShowMessage(ex.Message, InfoBarSeverity.Error);
+        }
+        finally
+        {
+            if (station)
+            {
+                _desktopLayer?.SetInputActivation(false);
+            }
+            _overlayOpenCount = Math.Max(0, _overlayOpenCount - 1);
+            ResetStationPointerDelay();
         }
     }
 
