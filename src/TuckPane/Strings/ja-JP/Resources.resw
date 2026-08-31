@@ -706,4 +706,7 @@
   <data name="WindowMinimize" xml:space="preserve">
     <value>最小化</value>
   </data>
+  <data name="NoteMissingError" xml:space="preserve">
+    <value>ノートは存在しないか、既に削除されています。</value>
+  </data>
 </root>

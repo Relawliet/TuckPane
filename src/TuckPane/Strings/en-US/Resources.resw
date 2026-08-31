@@ -706,4 +706,7 @@
   <data name="WindowMinimize" xml:space="preserve">
     <value>Minimize</value>
   </data>
+  <data name="NoteMissingError" xml:space="preserve">
+    <value>The note does not exist or was already deleted.</value>
+  </data>
 </root>

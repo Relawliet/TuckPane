@@ -706,4 +706,7 @@
   <data name="WindowMinimize" xml:space="preserve">
     <value>最小化</value>
   </data>
+  <data name="NoteMissingError" xml:space="preserve">
+    <value>便签不存在或已被删除。</value>
+  </data>
 </root>

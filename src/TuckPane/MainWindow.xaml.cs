@@ -2972,8 +2972,26 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private long _lastItemOpenAt;
+
+    private void Item_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        // 拖拽（换序/拖出/原生拖放）过程中 WinUI 不会产生 Tapped；此处再兜底守卫
+        if (_shellDropFinalizing || _shellDragActive || _itemReorderSession is not null ||
+            _draggedRelativeName is not null || _animating ||
+            sender is not FrameworkElement { Tag: string relativeName })
+        {
+            return;
+        }
+        long now = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (System.Diagnostics.Stopwatch.GetElapsedTime(_lastItemOpenAt).TotalMilliseconds < 800) return;
+        _lastItemOpenAt = now;
+        TryOpenItem(relativeName);
+    }
+
     private void Item_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
+        _lastItemOpenAt = System.Diagnostics.Stopwatch.GetTimestamp();
         if (_shellDropFinalizing ||
             sender is not FrameworkElement { Tag: string relativeName } ||
             _draggedRelativeName is not null)
@@ -3021,8 +3039,13 @@ public sealed partial class MainWindow : Window
         var delete = new MenuFlyoutItem { Text = AppStrings.Get("ContextDeleteNote") };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(rename, "RenameNoteMenuItem");
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(delete, "DeleteNoteMenuItem");
+        AppLogger.Info($"便签菜单：打开 note={noteId}。");
         rename.Click += async (_, _) => await ShowRenameNoteDialogAsync(noteId);
-        delete.Click += async (_, _) => await ShowDeleteNoteDialogAsync(noteId);
+        delete.Click += async (_, _) =>
+        {
+            AppLogger.Info($"便签菜单：点击删除 note={noteId}。");
+            await ShowDeleteNoteDialogAsync(noteId);
+        };
         var flyout = new MenuFlyout();
         flyout.Items.Add(rename);
         flyout.Items.Add(delete);
@@ -3093,8 +3116,14 @@ public sealed partial class MainWindow : Window
 
     private async Task ShowDeleteNoteDialogAsync(Guid noteId)
     {
+        AppLogger.Info($"便签删除：确认对话框打开 note={noteId}。");
         NoteDefinition? note = _definition.Notes.FirstOrDefault(item => item.Id == noteId);
-        if (note is null) return;
+        if (note is null)
+        {
+            AppLogger.Error($"便签删除：状态中找不到便签 note={noteId}，取消。");
+            ShowMessage(AppStrings.Get("NoteMissingError"), InfoBarSeverity.Error);
+            return;
+        }
         bool station = _definition.PlacementMode == OrganizerPlacementMode.Station;
         _overlayOpenCount++;
         if (station) _desktopLayer?.SetInputActivation(true);
@@ -3109,6 +3138,7 @@ public sealed partial class MainWindow : Window
                 AppStrings.Format("NoteDeleteMessageFormat", note.Name),
                 AppStrings.Get("Delete"),
                 AppStrings.Get("Cancel"));
+            AppLogger.Info($"便签删除：确认结果 accepted={accepted} note={noteId}。");
             if (accepted) await _host.DeleteNoteAsync(_definition.Id, noteId);
         }
         catch (Exception ex)
