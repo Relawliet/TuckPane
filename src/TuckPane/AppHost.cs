@@ -891,6 +891,18 @@ public sealed class AppHost : IDisposable
         foreach (MainWindow window in _windows.Values) window.ApplyInheritedTheme();
     }
 
+    public void ApplyExpandOnHoverDelay(int milliseconds)
+    {
+        State.GlobalSettings.ExpandOnHoverMs = Math.Clamp(milliseconds, 100, 1500);
+        foreach (MainWindow window in _windows.Values) window.ApplyHoverExpandDelay(State.GlobalSettings.ExpandOnHoverMs);
+    }
+
+    public void ApplyPointerLeaveDelay(int milliseconds)
+    {
+        State.GlobalSettings.CollapseOnPointerLeaveMs = Math.Clamp(milliseconds, 200, 2000);
+        foreach (MainWindow window in _windows.Values) window.ApplyPointerLeaveDelay(State.GlobalSettings.CollapseOnPointerLeaveMs);
+    }
+
     public async Task SetLanguageAsync(AppLanguage language)
     {
         if (!Enum.IsDefined(language)) language = AppLanguage.ChineseSimplified;

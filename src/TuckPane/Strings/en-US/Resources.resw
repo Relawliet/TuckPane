@@ -709,4 +709,16 @@
   <data name="NoteMissingError" xml:space="preserve">
     <value>The note does not exist or was already deleted.</value>
   </data>
+  <data name="ExpandOnHoverDelayTitle" xml:space="preserve">
+    <value>Hover expand delay</value>
+  </data>
+  <data name="ExpandOnHoverDelayDescription" xml:space="preserve">
+    <value>How long to hover before auto-expanding (100–1500 ms).</value>
+  </data>
+  <data name="CollapseOnPointerLeaveDelayTitle" xml:space="preserve">
+    <value>Pointer leave delay</value>
+  </data>
+  <data name="CollapseOnPointerLeaveDelayDescription" xml:space="preserve">
+    <value>How long after the pointer leaves before collapsing (200–2000 ms, incl. stations).</value>
+  </data>
 </root>

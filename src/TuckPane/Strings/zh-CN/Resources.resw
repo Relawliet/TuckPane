@@ -709,4 +709,16 @@
   <data name="NoteMissingError" xml:space="preserve">
     <value>便签不存在或已被删除。</value>
   </data>
+  <data name="ExpandOnHoverDelayTitle" xml:space="preserve">
+    <value>悬浮展开延时</value>
+  </data>
+  <data name="ExpandOnHoverDelayDescription" xml:space="preserve">
+    <value>悬停停留多久后自动展开（100–1500 毫秒）。</value>
+  </data>
+  <data name="CollapseOnPointerLeaveDelayTitle" xml:space="preserve">
+    <value>离开收缩延时</value>
+  </data>
+  <data name="CollapseOnPointerLeaveDelayDescription" xml:space="preserve">
+    <value>鼠标离开后多久自动收起（200–2000 毫秒，含中转站）。</value>
+  </data>
 </root>

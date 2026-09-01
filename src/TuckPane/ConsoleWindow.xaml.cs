@@ -135,6 +135,8 @@ public sealed partial class ConsoleWindow : Window
         UpdateExpandOnHoverToggle();
         UpdateCollapseOnPointerLeaveToggle();
         UpdateExclusiveExpansionToggle();
+        UpdateExpandOnHoverDelaySlider();
+        UpdateCollapseOnPointerLeaveDelaySlider();
         CreateOrganizerButton.IsEnabled = _host.State.Organizers.Count < OrganizerLimits.MaximumOrganizers;
         CreateLimitText.Visibility = _host.State.Organizers.Count >= OrganizerLimits.MaximumOrganizers ? Visibility.Visible : Visibility.Collapsed;
         PopulateManageList(selectId ?? _selectedId);
@@ -661,11 +663,13 @@ public sealed partial class ConsoleWindow : Window
         try
         {
             await _host.SetExpandOnHoverAsync(ExpandOnHoverToggle.IsOn);
+            UpdateExpandOnHoverDelaySlider();
         }
         catch (Exception ex)
         {
             AppLogger.Error("无法更新悬浮展开设置。", ex);
             UpdateExpandOnHoverToggle();
+            UpdateExpandOnHoverDelaySlider();
             ShowError(AppStrings.Get("ExpandOnHoverErrorTitle"), ex.Message);
         }
     }
@@ -678,17 +682,65 @@ public sealed partial class ConsoleWindow : Window
         _loadingCollapseOnPointerLeave = false;
     }
 
+    private bool _loadingExpandOnHoverDelay;
+
+    private void UpdateExpandOnHoverDelaySlider()
+    {
+        if (ExpandOnHoverDelaySlider is null) return;
+        _loadingExpandOnHoverDelay = true;
+        bool enabled = _host.State.GlobalSettings.ExpandOnHover;
+        ExpandOnHoverDelayCard.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        ExpandOnHoverDelaySlider.Value = Math.Clamp(_host.State.GlobalSettings.ExpandOnHoverMs, 100, 1500);
+        ExpandOnHoverDelayText.Text = $"{Math.Round(ExpandOnHoverDelaySlider.Value)}ms";
+        _loadingExpandOnHoverDelay = false;
+    }
+
+    private void ExpandOnHoverDelaySlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (!_componentReady || _loadingExpandOnHoverDelay) return;
+        int value = (int)Math.Round(Math.Clamp(ExpandOnHoverDelaySlider.Value, 100, 1500));
+        ExpandOnHoverDelayText.Text = $"{value}ms";
+        _host.ApplyExpandOnHoverDelay(value);
+        _stateSaveTimer.Stop();
+        _stateSaveTimer.Start();
+    }
+
+    private bool _loadingPointerLeaveDelay;
+
+    private void UpdateCollapseOnPointerLeaveDelaySlider()
+    {
+        if (CollapseOnPointerLeaveDelaySlider is null) return;
+        _loadingPointerLeaveDelay = true;
+        bool enabled = _host.State.GlobalSettings.CollapseOnPointerLeave;
+        CollapseOnPointerLeaveDelayCard.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        CollapseOnPointerLeaveDelaySlider.Value = Math.Clamp(_host.State.GlobalSettings.CollapseOnPointerLeaveMs, 200, 2000);
+        CollapseOnPointerLeaveDelayText.Text = $"{Math.Round(CollapseOnPointerLeaveDelaySlider.Value)}ms";
+        _loadingPointerLeaveDelay = false;
+    }
+
+    private void CollapseOnPointerLeaveDelaySlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (!_componentReady || _loadingPointerLeaveDelay) return;
+        int value = (int)Math.Round(Math.Clamp(CollapseOnPointerLeaveDelaySlider.Value, 200, 2000));
+        CollapseOnPointerLeaveDelayText.Text = $"{value}ms";
+        _host.ApplyPointerLeaveDelay(value);
+        _stateSaveTimer.Stop();
+        _stateSaveTimer.Start();
+    }
+
     private async void CollapseOnPointerLeaveToggle_Toggled(object sender, RoutedEventArgs e)
     {
         if (!_componentReady || _loadingCollapseOnPointerLeave) return;
         try
         {
             await _host.SetCollapseOnPointerLeaveAsync(CollapseOnPointerLeaveToggle.IsOn);
+            UpdateCollapseOnPointerLeaveDelaySlider();
         }
         catch (Exception ex)
         {
             AppLogger.Error("无法更新鼠标离开收缩设置。", ex);
             UpdateCollapseOnPointerLeaveToggle();
+            UpdateCollapseOnPointerLeaveDelaySlider();
             ShowError(AppStrings.Get("CollapseOnPointerLeaveErrorTitle"), ex.Message);
         }
     }

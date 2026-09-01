@@ -90,6 +90,8 @@ public sealed class GlobalSettings
     public bool ExclusiveExpansion { get; set; } = true;
     public bool ExpandOnHover { get; set; }
     public bool CollapseOnPointerLeave { get; set; }
+    public int ExpandOnHoverMs { get; set; } = 350;
+    public int CollapseOnPointerLeaveMs { get; set; } = 400;
 }
 
 public sealed class ConsolePlacement

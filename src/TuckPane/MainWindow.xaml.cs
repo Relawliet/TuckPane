@@ -258,7 +258,9 @@ public sealed partial class MainWindow : Window
         _longPressTimer.Tick += LongPressTimer_Tick;
 
         _externalHoverTimer = DispatcherQueue.CreateTimer();
-        _externalHoverTimer.Interval = TimeSpan.FromMilliseconds(ExternalHoverExpandMs);
+        _collapseOnPointerLeaveMs = Math.Clamp(_host.State.GlobalSettings.CollapseOnPointerLeaveMs, 200, 2000);
+        _externalHoverTimer.Interval = TimeSpan.FromMilliseconds(
+            Math.Clamp(_host.State.GlobalSettings.ExpandOnHoverMs, 100, 1500));
         _externalHoverTimer.IsRepeating = false;
         _externalHoverTimer.Tick += ExternalHoverTimer_Tick;
 
@@ -4574,6 +4576,8 @@ public sealed partial class MainWindow : Window
 
     private DataPackageOperation _acceptedDropOperation;
 
+    private int _collapseOnPointerLeaveMs = 400;
+
     private void UpdateFolderDropFeedback(WidgetItem? folder, DragEventArgs e)
     {
         if (ReferenceEquals(folder, _folderDropTarget))
@@ -4809,7 +4813,7 @@ public sealed partial class MainWindow : Window
 
             long ordinaryNow = Stopwatch.GetTimestamp();
             _ordinaryOutsideSince = _ordinaryOutsideSince == 0 ? ordinaryNow : _ordinaryOutsideSince;
-            if (Stopwatch.GetElapsedTime(_ordinaryOutsideSince, ordinaryNow).TotalMilliseconds < StationLeaveCollapseMs) return;
+            if (Stopwatch.GetElapsedTime(_ordinaryOutsideSince, ordinaryNow).TotalMilliseconds < _collapseOnPointerLeaveMs) return;
             _ordinaryOutsideSince = 0;
             await CollapseAsync();
             return;
@@ -4856,7 +4860,7 @@ public sealed partial class MainWindow : Window
         }
 
         _stationOutsideSince = _stationOutsideSince == 0 ? now : _stationOutsideSince;
-        if (Stopwatch.GetElapsedTime(_stationOutsideSince, now).TotalMilliseconds < StationLeaveCollapseMs) return;
+        if (Stopwatch.GetElapsedTime(_stationOutsideSince, now).TotalMilliseconds < _collapseOnPointerLeaveMs) return;
         _stationTransitionPending = true;
         ResetStationPointerDelay();
         try { await CollapseAsync(); }
@@ -5319,6 +5323,16 @@ public sealed partial class MainWindow : Window
     internal IReadOnlyList<WidgetItem> ItemSnapshot => _items;
     internal bool StorageExists => _storage.Exists;
     internal NativeMethods.RECT CompactBounds => _compactBounds;
+
+    internal void ApplyHoverExpandDelay(int milliseconds)
+    {
+        _externalHoverTimer.Interval = TimeSpan.FromMilliseconds(Math.Clamp(milliseconds, 100, 1500));
+    }
+
+    internal void ApplyPointerLeaveDelay(int milliseconds)
+    {
+        _collapseOnPointerLeaveMs = Math.Clamp(milliseconds, 200, 2000);
+    }
 
     internal bool TryGetWindowBounds(out NativeMethods.RECT bounds)
     {

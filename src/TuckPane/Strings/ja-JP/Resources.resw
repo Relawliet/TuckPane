@@ -709,4 +709,16 @@
   <data name="NoteMissingError" xml:space="preserve">
     <value>ノートは存在しないか、既に削除されています。</value>
   </data>
+  <data name="ExpandOnHoverDelayTitle" xml:space="preserve">
+    <value>ホバー展開の遅延</value>
+  </data>
+  <data name="ExpandOnHoverDelayDescription" xml:space="preserve">
+    <value>ホバーしてから自動展開までの時間（100–1500 ミリ秒）。</value>
+  </data>
+  <data name="CollapseOnPointerLeaveDelayTitle" xml:space="preserve">
+    <value>収縮までの遅延</value>
+  </data>
+  <data name="CollapseOnPointerLeaveDelayDescription" xml:space="preserve">
+    <value>マウスが離れてから自動収縮までの時間（200–2000 ミリ秒、ステーション含む）。</value>
+  </data>
 </root>

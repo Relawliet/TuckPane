@@ -217,7 +217,17 @@
                                     <TextBlock Foreground="{StaticResource ConsoleSecondaryTextBrush}" FontSize="12" Tag="loc:ExpandOnHoverDescription" Text="鼠标在收起的普通收纳窗上停留 350 毫秒后展开。" />
                                 </StackPanel>
                                 <ToggleSwitch x:Name="ExpandOnHoverToggle" Grid.Column="1" VerticalAlignment="Center" AutomationProperties.AutomationId="ExpandOnHoverToggle" Toggled="ExpandOnHoverToggle_Toggled" />
-
+                            </Grid>
+                        </Border>
+                        <Border x:Name="ExpandOnHoverDelayCard" Style="{StaticResource Row}" Visibility="Collapsed">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /></Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock FontSize="15" Tag="loc:ExpandOnHoverDelayTitle" Text="悬浮展开延时" />
+                                    <TextBlock Foreground="{StaticResource ConsoleSecondaryTextBrush}" FontSize="12" Tag="loc:ExpandOnHoverDelayDescription" Text="悬停停留多久后自动展开（100–1500 毫秒）。" />
+                                </StackPanel>
+                                <controls:ConsoleSlider x:Name="ExpandOnHoverDelaySlider" Grid.Column="1" Style="{StaticResource Pct}" Minimum="100" Maximum="1500" StepFrequency="50" Value="350" ValueChanged="ExpandOnHoverDelaySlider_ValueChanged" />
+                                <TextBlock x:Name="ExpandOnHoverDelayText" Grid.Column="2" VerticalAlignment="Center" TextAlignment="Right" />
                             </Grid>
                         </Border>
                         <Border Style="{StaticResource Row}">
@@ -228,6 +238,17 @@
                                     <TextBlock Foreground="{StaticResource ConsoleSecondaryTextBrush}" FontSize="12" Tag="loc:CollapseOnPointerLeaveDescription" Text="普通收纳窗展开后，鼠标离开窗口 400 毫秒后自动收起。" />
                                 </StackPanel>
                                 <ToggleSwitch x:Name="CollapseOnPointerLeaveToggle" Grid.Column="1" VerticalAlignment="Center" AutomationProperties.AutomationId="CollapseOnPointerLeaveToggle" Toggled="CollapseOnPointerLeaveToggle_Toggled" />
+                            </Grid>
+                        </Border>
+                        <Border x:Name="CollapseOnPointerLeaveDelayCard" Style="{StaticResource Row}" Visibility="Collapsed">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /></Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock FontSize="15" Tag="loc:CollapseOnPointerLeaveDelayTitle" Text="离开收缩延时" />
+                                    <TextBlock Foreground="{StaticResource ConsoleSecondaryTextBrush}" FontSize="12" Tag="loc:CollapseOnPointerLeaveDelayDescription" Text="鼠标离开后多久自动收起（200–2000 毫秒，含中转站）。" />
+                                </StackPanel>
+                                <controls:ConsoleSlider x:Name="CollapseOnPointerLeaveDelaySlider" Grid.Column="1" Style="{StaticResource Pct}" Minimum="200" Maximum="2000" StepFrequency="50" Value="400" ValueChanged="CollapseOnPointerLeaveDelaySlider_ValueChanged" />
+                                <TextBlock x:Name="CollapseOnPointerLeaveDelayText" Grid.Column="2" VerticalAlignment="Center" TextAlignment="Right" />
                             </Grid>
                         </Border>
                         <Border Style="{StaticResource Row}">
